@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal — voice & gesture assistant</title>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:#0B0E11; --panel:#12161B; --line:#212830;
+    --ink:#EAEFF3; --ink-soft:#8A96A3;
+    --sig:#5EF2A6;   /* signal green — the one accent */
+    --warn:#FF6B4A;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+  }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  ::selection{ background:var(--sig); color:#04120b; }
+
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px; border-bottom:1px solid var(--line);
+  }
+  .brand{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:19px; letter-spacing:-0.02em; }
+  .dot{ width:9px; height:9px; border-radius:50%; background:var(--ink-soft); flex:none; }
+  .dot.live{ background:var(--sig); box-shadow:0 0 0 0 rgba(94,242,166,0.6); animation:ring 1.6s infinite; }
+  @keyframes ring{
+    0%{ box-shadow:0 0 0 0 rgba(94,242,166,0.45); }
+    70%{ box-shadow:0 0 0 8px rgba(94,242,166,0); }
+    100%{ box-shadow:0 0 0 0 rgba(94,242,166,0); }
+  }
+  header .status{ font-size:12px; color:var(--ink-soft); }
+
+  main{ max-width:1080px; margin:0 auto; padding:28px 20px 60px; }
+  .lead{ max-width:62ch; margin-bottom:26px; }
+  .lead h1{ font-size:clamp(24px,4vw,32px); margin:0 0 8px; letter-spacing:-0.02em; }
+  .lead p{ color:var(--ink-soft); font-size:14.5px; line-height:1.6; margin:0; }
+
+  .grid{ display:grid; grid-template-columns: 1.1fr 1fr; gap:18px; margin-bottom:18px; }
+  @media (max-width:860px){ .grid{ grid-template-columns:1fr; } }
+
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  .card h2{ font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); margin:0 0 14px; display:flex; justify-content:space-between; align-items:center; }
+
+  /* camera panel */
+  .cam-wrap{ position:relative; border-radius:10px; overflow:hidden; background:#000; aspect-ratio:4/3; }
+  video, canvas{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  video{ transform:scaleX(-1); }
+  canvas{ transform:scaleX(-1); }
+  .gesture-badge{
+    position:absolute; left:12px; bottom:12px; z-index:3;
+    background:rgba(0,0,0,0.55); border:1px solid rgba(94,242,166,0.4);
+    color:var(--sig); padding:6px 12px; border-radius:100px; font-size:13px; font-weight:700;
+    backdrop-filter: blur(3px);
+  }
+  .cam-empty{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:var(--ink-soft); font-size:13px; text-align:center; padding:20px; z-index:2;
+  }
+
+  /* mic panel */
+  .transcript{
+    min-height:120px; background:#0d1116; border:1px solid var(--line); border-radius:10px;
+    padding:14px; font-size:14px; color:var(--ink-soft); line-height:1.6; margin-bottom:12px;
+  }
+  .transcript .final{ color:var(--ink); }
+  .mic-meter{ display:flex; gap:4px; align-items:flex-end; height:26px; margin-bottom:14px; }
+  .mic-meter span{ width:5px; background:var(--sig); border-radius:2px; height:4px; transition:height .08s ease; opacity:.85; }
+
+  .btn-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  button{
+    font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer;
+    border-radius:9px; padding:11px 16px; border:1px solid var(--line);
+    background:#171d24; color:var(--ink); transition:background .15s ease, border-color .15s ease;
+  }
+  button:hover{ border-color:#33404d; }
+  button.primary{ background:var(--sig); color:#04120b; border-color:var(--sig); }
+  button.primary:hover{ background:#7bf5b8; }
+  button:disabled{ opacity:0.45; cursor:default; }
+  button:focus-visible{ outline:2px solid var(--sig); outline-offset:2px; }
+
+  /* log */
+  .log-card{ grid-column: 1 / -1; }
+  .log{ max-height:220px; overflow-y:auto; display:flex; flex-direction:column-reverse; gap:8px; }
+  .log-row{ display:flex; gap:10px; font-size:13px; align-items:baseline; }
+  .log-row .t{ color:#57616e; font-size:11px; flex:none; width:66px; }
+  .log-row .tag{ flex:none; font-size:11px; padding:2px 7px; border-radius:5px; font-weight:700; }
+  .tag.gesture{ background:rgba(94,242,166,0.12); color:var(--sig); }
+  .tag.voice{ background:rgba(255,107,74,0.12); color:var(--warn); }
+  .tag.assist{ background:rgba(140,160,255,0.12); color:#9db2ff; }
+  .log-empty{ color:var(--ink-soft); font-size:13px; }
+
+  .note{
+    grid-column:1/-1; font-size:12.5px; color:var(--ink-soft); line-height:1.6;
+    border-top:1px solid var(--line); padding-top:16px; margin-top:4px;
+  }
+  .note b{ color:var(--ink); }
+
+  .reveal{
+    opacity:0; transform:translateY(28px);
+    transition: opacity 0.7s cubic-bezier(.22,1,.36,1), transform 0.7s cubic-bezier(.22,1,.36,1);
+  }
+  .reveal.in{ opacity:1; transform:translateY(0); }
+  @media (prefers-reduced-motion: reduce){
+    .reveal{ opacity:1; transform:none; transition:none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="dot" id="liveDot"></span>signal</div>
+  <div class="status mono" id="statusLine">idle · nothing enabled</div>
+</header>
+
+<main>
+  <div class="lead reveal">
+    <h1>Control it with your voice and your hands.</h1>
+    <p>This is a live working demo — hand tracking and speech recognition both run right in your browser. Turn on your camera and mic below to try it.</p>
+  </div>
+
+  <div class="grid">
+    <div class="card reveal" style="transition-delay:0.05s;">
+      <h2>Hand gesture <span class="mono" id="handState">off</span></h2>
+      <div class="cam-wrap" id="camWrap">
+        <div class="cam-empty" id="camEmpty">Camera is off. Turn it on to start gesture reading.</div>
+        <video id="video" playsinline></video>
+        <canvas id="canvas"></canvas>
+        <div class="gesture-badge" id="gestureBadge" style="display:none;">—</div>
+      </div>
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="primary" id="camBtn">Turn on camera</button>
+      </div>
+    </div>
+
+    <div class="card reveal" style="transition-delay:0.15s;">
+      <h2>Voice <span class="mono" id="micState">off</span></h2>
+      <div class="mic-meter" id="micMeter"></div>
+      <div class="transcript" id="transcript">Mic is off. Turn it on and say something.</div>
+      <div class="btn-row">
+        <button class="primary" id="micBtn">Turn on mic</button>
+      </div>
+    </div>
+
+    <div class="card log-card reveal" style="transition-delay:0.1s;">
+      <h2>Activity log</h2>
+      <div class="log" id="log">
+        <div class="log-empty">Events will show up here as you speak or gesture.</div>
+      </div>
+    </div>
+
+    <div class="note reveal">
+      This build recognizes five gestures (open palm, fist, thumbs up, peace sign, pointing) and a handful of spoken commands ("hello", "what time is it", "stop listening") to show the control loop working end to end. <b>It isn't hooked up to a real AI model yet</b> — that's the next step, and it needs your own API key plus a small backend to keep that key private, since it can't run safely in a public webpage's code.
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  const statusLine = document.getElementById('statusLine');
+  const liveDot = document.getElementById('liveDot');
+  const logEl = document.getElementById('log');
+  let cameraOn = false, micOn = false;
+
+  function setStatus(){
+    const parts = [];
+    if(cameraOn) parts.push('camera on');
+    if(micOn) parts.push('mic on');
+    statusLine.textContent = parts.length ? parts.join(' · ') : 'idle · nothing enabled';
+    liveDot.classList.toggle('live', cameraOn || micOn);
+  }
+
+  function logEvent(tag, label, text){
+    const empty = logEl.querySelector('.log-empty');
+    if(empty) empty.remove();
+    const row = document.createElement('div');
+    row.className = 'log-row';
+    const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    row.innerHTML = `<span class="t mono">${time}</span><span class="tag ${tag}">${label}</span><span>${text}</span>`;
+    logEl.prepend(row);
+    while(logEl.children.length > 40) logEl.removeChild(logEl.lastChild);
+  }
+
+  /* ---------------- SPEECH ---------------- */
+  const micBtn = document.getElementById('micBtn');
+  const micState = document.getElementById('micState');
+  const transcriptEl = document.getElementById('transcript');
+  const micMeter = document.getElementById('micMeter');
+  for(let i=0;i<24;i++){ const s=document.createElement('span'); micMeter.appendChild(s); }
+  const meterBars = micMeter.querySelectorAll('span');
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let audioCtx, analyser, micStream, meterRaf;
+
+  function respond(text){
+    logEvent('assist', 'assistant', text);
+    try{
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.rate = 1.02;
+      speechSynthesis.speak(utter);
+    }catch(e){}
+  }
+
+  function handleCommand(said){
+    const s = said.toLowerCase();
+    if(s.includes('hello') || s.includes('hi')){
+      respond("Hello — I'm listening.");
+    } else if(s.includes('time')){
+      respond('It is ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + '.');
+    } else if(s.includes('stop')){
+      respond('Stopping the mic.');
+      stopMic();
+    } else {
+      respond("I heard: " + said);
+    }
+  }
+
+  function startMeter(){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaStreamSource(micStream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 64;
+    source.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    function tick(){
+      analyser.getByteFrequencyData(data);
+      meterBars.forEach((bar, i) => {
+        const v = data[i % data.length] || 0;
+        bar.style.height = Math.max(4, (v/255)*26) + 'px';
+      });
+      meterRaf = requestAnimationFrame(tick);
+    }
+    tick();
+  }
+
+  function stopMeter(){
+    if(meterRaf) cancelAnimationFrame(meterRaf);
+    meterBars.forEach(b => b.style.height = '4px');
+    if(audioCtx) audioCtx.close().catch(()=>{});
+  }
+
+  async function startMic(){
+    if(!SpeechRecognition){
+      transcriptEl.textContent = "Your browser doesn't support speech recognition — try Chrome.";
+      return;
+    }
+    try{
+      micStream = await navigator.mediaDevices.getUserMedia({ audio:true });
+    }catch(e){
+      transcriptEl.textContent = 'Microphone permission was denied.';
+      return;
+    }
+    startMeter();
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (e) => {
+      let interim = '', final = '';
+      for(let i = e.resultIndex; i < e.results.length; i++){
+        const t = e.results[i][0].transcript;
+        if(e.results[i].isFinal) final += t; else interim += t;
+      }
+      transcriptEl.innerHTML = (final ? '<span class="final">'+final+'</span> ' : '') + interim;
+      if(final.trim()){
+        logEvent('voice', 'voice', '"' + final.trim() + '"');
+        handleCommand(final.trim());
+      }
+    };
+    recognition.onerror = (e) => {
+      if(e.error === 'no-speech') return;
+      logEvent('voice', 'voice', 'error: ' + e.error);
+    };
+    recognition.onend = () => { if(micOn) recognition.start(); };
+    recognition.start();
+
+    micOn = true;
+    micState.textContent = 'on';
+    micBtn.textContent = 'Turn off mic';
+    micBtn.classList.remove('primary');
+    transcriptEl.textContent = "Listening — try saying 'hello'.";
+    setStatus();
+  }
+
+  function stopMic(){
+    micOn = false;
+    if(recognition){ recognition.onend = null; recognition.stop(); }
+    if(micStream) micStream.getTracks().forEach(t => t.stop());
+    stopMeter();
+    micState.textContent = 'off';
+    micBtn.textContent = 'Turn on mic';
+    micBtn.classList.add('primary');
+    transcriptEl.textContent = 'Mic is off. Turn it on and say something.';
+    setStatus();
+  }
+
+  micBtn.addEventListener('click', () => micOn ? stopMic() : startMic());
+
+  /* ---------------- HAND TRACKING ---------------- */
+  const camBtn = document.getElementById('camBtn');
+  const handState = document.getElementById('handState');
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const camEmpty = document.getElementById('camEmpty');
+  const gestureBadge = document.getElementById('gestureBadge');
+  let camStream = null, hands = null, rafId = null, lastGesture = '', lastGestureAt = 0;
+
+  const CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
+
+  function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+  function classifyGesture(lm){
+    // finger "extended" = tip further from wrist than pip joint, with margin
+    const wrist = lm[0];
+    const fingers = [
+      { tip:4,  pip:2 },  // thumb (rough)
+      { tip:8,  pip:6 },  // index
+      { tip:12, pip:10 }, // middle
+      { tip:16, pip:14 }, // ring
+      { tip:20, pip:18 }  // pinky
+    ];
+    const extended = fingers.map(f => dist(lm[f.tip], wrist) > dist(lm[f.pip], wrist) * 1.15);
+    const [thumb, index, middle, ring, pinky] = extended;
+    const count = extended.filter(Boolean).length;
+
+    if(count === 0) return 'Fist';
+    if(index && middle && !ring && !pinky) return 'Peace sign';
+    if(thumb && !index && !middle && !ring && !pinky) return 'Thumbs up';
+    if(index && !middle && !ring && !pinky) return 'Pointing';
+    if(count >= 4) return 'Open palm';
+    return null;
+  }
+
+  function onHandsResult(results){
+    ctx.save();
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    if(results.multiHandLandmarks && results.multiHandLandmarks.length){
+      const lm = results.multiHandLandmarks[0];
+      ctx.strokeStyle = 'rgba(94,242,166,0.8)';
+      ctx.lineWidth = 2;
+      CONNECTIONS.forEach(([a,b]) => {
+        ctx.beginPath();
+        ctx.moveTo(lm[a].x*canvas.width, lm[a].y*canvas.height);
+        ctx.lineTo(lm[b].x*canvas.width, lm[b].y*canvas.height);
+        ctx.stroke();
+      });
+      ctx.fillStyle = '#5EF2A6';
+      lm.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x*canvas.width, p.y*canvas.height, 3, 0, Math.PI*2);
+        ctx.fill();
+      });
+
+      const g = classifyGesture(lm);
+      gestureBadge.style.display = 'block';
+      gestureBadge.textContent = g || 'reading…';
+      const now = Date.now();
+      if(g && (g !== lastGesture || now - lastGestureAt > 1500)){
+        logEvent('gesture', 'gesture', g);
+        lastGesture = g; lastGestureAt = now;
+      }
+    } else {
+      gestureBadge.style.display = 'none';
+    }
+    ctx.restore();
+  }
+
+  async function startCamera(){
+    try{
+      camStream = await navigator.mediaDevices.getUserMedia({ video:{ width:480, height:360 } });
+    }catch(e){
+      camEmpty.textContent = 'Camera permission was denied.';
+      return;
+    }
+    video.srcObject = camStream;
+    await video.play();
+    canvas.width = video.videoWidth || 480;
+    canvas.height = video.videoHeight || 360;
+    camEmpty.style.display = 'none';
+
+    hands = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+    hands.setOptions({ maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.6, minTrackingConfidence:0.6 });
+    hands.onResults(onHandsResult);
+
+    async function loop(){
+      if(!cameraOn) return;
+      await hands.send({ image: video });
+      rafId = requestAnimationFrame(loop);
+    }
+    loop();
+
+    cameraOn = true;
+    handState.textContent = 'on';
+    camBtn.textContent = 'Turn off camera';
+    camBtn.classList.remove('primary');
+    setStatus();
+  }
+
+  function stopCamera(){
+    cameraOn = false;
+    if(rafId) cancelAnimationFrame(rafId);
+    if(camStream) camStream.getTracks().forEach(t => t.stop());
+    video.srcObject = null;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    gestureBadge.style.display = 'none';
+    camEmpty.style.display = 'flex';
+    camEmpty.textContent = 'Camera is off. Turn it on to start gesture reading.';
+    handState.textContent = 'off';
+    camBtn.textContent = 'Turn on camera';
+    camBtn.classList.add('primary');
+    setStatus();
+  }
+
+  camBtn.addEventListener('click', () => cameraOn ? stopCamera() : startCamera());
+
+  setStatus();
+
+  /* ---------------- SCROLL REVEAL ---------------- */
+  const revealEls = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting){
+        entry.target.classList.add('in');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+  revealEls.forEach(el => io.observe(el));
+})();
+</script>
+
+</body>
+</html>
