@@ -6,7 +6,6 @@
 <title>Signal — voice & gesture assistant</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" defer></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap');
@@ -388,7 +387,7 @@
   const ctx = canvas.getContext('2d');
   const camEmpty = document.getElementById('camEmpty');
   const gestureBadge = document.getElementById('gestureBadge');
-  let camStream = null, hands = null, rafId = null, lastGesture = '', lastGestureAt = 0;
+  let camStream = null, rafId = null, lastGesture = '', lastGestureAt = 0;
 
   const CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
 
@@ -416,12 +415,11 @@
     return null;
   }
 
-  function onHandsResult(results){
+  function processLandmarks(lm){
     ctx.save();
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    if(results.multiHandLandmarks && results.multiHandLandmarks.length){
-      const lm = results.multiHandLandmarks[0];
+    if(lm){
       window.__signalHandLandmarks = lm;
       ctx.strokeStyle = 'rgba(94,242,166,0.8)';
       ctx.lineWidth = 2;
@@ -453,6 +451,27 @@
     ctx.restore();
   }
 
+  let handLandmarker = null;
+
+  async function ensureHandLandmarker(){
+    if(handLandmarker) return handLandmarker;
+    camEmpty.textContent = 'Loading hand-tracking model…';
+    camEmpty.style.display = 'flex';
+    const visionModule = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+    const filesetResolver = await visionModule.FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+    );
+    handLandmarker = await visionModule.HandLandmarker.createFromOptions(filesetResolver, {
+      baseOptions: {
+        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+        delegate: 'GPU'
+      },
+      runningMode: 'VIDEO',
+      numHands: 1
+    });
+    return handLandmarker;
+  }
+
   async function startCamera(){
     try{
       camStream = await navigator.mediaDevices.getUserMedia({ video:{ width:480, height:360 } });
@@ -464,26 +483,33 @@
     await video.play();
     canvas.width = video.videoWidth || 480;
     canvas.height = video.videoHeight || 360;
-    camEmpty.style.display = 'none';
 
-    hands = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
-    hands.setOptions({ maxNumHands:1, modelComplexity:0, minDetectionConfidence:0.5, minTrackingConfidence:0.5 });
-    hands.onResults(onHandsResult);
-
-    let frameCount = 0;
-    async function loop(){
-      if(!cameraOn) return;
-      frameCount++;
-      if(frameCount % 2 === 0){ await hands.send({ image: video }); }
-      rafId = requestAnimationFrame(loop);
+    let landmarker;
+    try{
+      landmarker = await ensureHandLandmarker();
+    }catch(e){
+      camEmpty.textContent = 'Could not load the hand-tracking model — check your connection and reload.';
+      camEmpty.style.display = 'flex';
+      return;
     }
-    loop();
+    camEmpty.style.display = 'none';
 
     cameraOn = true;
     handState.textContent = 'on';
     camBtn.textContent = 'Turn off camera';
     camBtn.classList.remove('primary');
     setStatus();
+
+    function loop(){
+      if(!cameraOn) return;
+      if(video.readyState >= 2){
+        const result = landmarker.detectForVideo(video, performance.now());
+        const lm = (result.landmarks && result.landmarks.length) ? result.landmarks[0] : null;
+        processLandmarks(lm);
+      }
+      rafId = requestAnimationFrame(loop);
+    }
+    loop();
   }
 
   function stopCamera(){
