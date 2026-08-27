@@ -4,21 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Signal — voice & gesture assistant</title>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" defer></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
   :root{
-    --bg:#0B0E11; --panel:#12161B; --line:#212830;
+    --bg:#0B0E11; --panel:#12161B; --line:#212830; --grid: rgba(255,255,255,0.035);
     --ink:#EAEFF3; --ink-soft:#8A96A3;
     --sig:#5EF2A6;   /* signal green — the one accent */
     --warn:#FF6B4A;
   }
   *{ box-sizing:border-box; }
   body{
-    margin:0; background:var(--bg); color:var(--ink);
+    margin:0; color:var(--ink);
     font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(94,242,166,0.10), transparent),
+      radial-gradient(ellipse 700px 500px at 100% 10%, rgba(140,160,255,0.07), transparent),
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0/48px 48px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/48px 48px,
+      var(--bg);
+    background-attachment: fixed;
   }
   .mono{ font-family:'JetBrains Mono',monospace; }
   ::selection{ background:var(--sig); color:#04120b; }
@@ -26,6 +35,7 @@
   header{
     display:flex; align-items:center; justify-content:space-between;
     padding:22px 24px; border-bottom:1px solid var(--line);
+    backdrop-filter: blur(6px);
   }
   .brand{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:19px; letter-spacing:-0.02em; }
   .dot{ width:9px; height:9px; border-radius:50%; background:var(--ink-soft); flex:none; }
@@ -38,15 +48,54 @@
   header .status{ font-size:12px; color:var(--ink-soft); }
 
   main{ max-width:1080px; margin:0 auto; padding:28px 20px 60px; }
-  .lead{ max-width:62ch; margin-bottom:26px; }
-  .lead h1{ font-size:clamp(24px,4vw,32px); margin:0 0 8px; letter-spacing:-0.02em; }
-  .lead p{ color:var(--ink-soft); font-size:14.5px; line-height:1.6; margin:0; }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:12px; color: var(--sig); border:1px solid rgba(94,242,166,0.3);
+    background: rgba(94,242,166,0.06); padding:6px 12px; border-radius:100px;
+    margin-bottom:18px;
+  }
+  .lead{ max-width:62ch; margin-bottom:34px; }
+  .lead h1{ font-size:clamp(28px,5vw,42px); margin:0 0 12px; letter-spacing:-0.03em; line-height:1.08; }
+  .lead p{ color:var(--ink-soft); font-size:15.5px; line-height:1.65; margin:0; max-width:54ch; }
+
+  .features{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:38px; }
+  @media (max-width:860px){ .features{ grid-template-columns:1fr; } }
+  .feature{
+    border:1px solid var(--line); border-radius:12px; padding:16px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.02), transparent);
+  }
+  .feature .icon{
+    width:30px; height:30px; border-radius:8px; margin-bottom:10px;
+    display:flex; align-items:center; justify-content:center;
+    background: rgba(94,242,166,0.1); color:var(--sig);
+  }
+  .feature h3{ font-size:14px; margin:0 0 6px; }
+  .feature p{ font-size:13px; color:var(--ink-soft); margin:0; line-height:1.5; }
 
   .grid{ display:grid; grid-template-columns: 1.1fr 1fr; gap:18px; margin-bottom:18px; }
   @media (max-width:860px){ .grid{ grid-template-columns:1fr; } }
 
-  .card{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px;
+    box-shadow: 0 12px 30px -18px rgba(0,0,0,0.6);
+  }
   .card h2{ font-size:13px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); margin:0 0 14px; display:flex; justify-content:space-between; align-items:center; }
+
+  /* AI core panel */
+  .core-card{ grid-column: 1 / -1; }
+  .core-wrap{
+    position:relative; border-radius:10px; overflow:hidden;
+    background: radial-gradient(ellipse at center, rgba(94,242,166,0.06), #06090b 70%);
+    aspect-ratio: 21/9;
+  }
+  @media (max-width:640px){ .core-wrap{ aspect-ratio:4/3; } }
+  .core-wrap canvas{ position:absolute; inset:0; width:100%; height:100%; }
+  .core-hint{
+    position:absolute; left:14px; bottom:12px; z-index:2;
+    font-size:12.5px; color:var(--ink-soft); background:rgba(0,0,0,0.4);
+    padding:6px 10px; border-radius:8px; backdrop-filter: blur(3px);
+  }
+  .core-hint b{ color:var(--sig); }
 
   /* camera panel */
   .cam-wrap{ position:relative; border-radius:10px; overflow:hidden; background:#000; aspect-ratio:4/3; }
@@ -121,11 +170,37 @@
 
 <main>
   <div class="lead reveal">
+    <span class="eyebrow">live demo · runs entirely in your browser</span>
     <h1>Control it with your voice and your hands.</h1>
-    <p>This is a live working demo — hand tracking and speech recognition both run right in your browser. Turn on your camera and mic below to try it.</p>
+    <p>Signal reads what you say and what you gesture — no keyboard, no mouse. Turn on your camera and mic below to try it live.</p>
+  </div>
+
+  <div class="features">
+    <div class="feature reveal" style="transition-delay:0s;">
+      <div class="icon">✋</div>
+      <h3>Reads five gestures</h3>
+      <p>Open palm, fist, thumbs up, peace sign, and pointing — tracked live from your camera.</p>
+    </div>
+    <div class="feature reveal" style="transition-delay:0.06s;">
+      <div class="icon">🎙</div>
+      <h3>Understands speech</h3>
+      <p>Real-time voice recognition with spoken replies, right in the browser — no app install.</p>
+    </div>
+    <div class="feature reveal" style="transition-delay:0.12s;">
+      <div class="icon">⚡</div>
+      <h3>Nothing leaves your device</h3>
+      <p>Camera and mic processing happen locally — no video or audio is uploaded anywhere.</p>
+    </div>
   </div>
 
   <div class="grid">
+    <div class="card core-card reveal" style="transition-delay:0s;">
+      <h2>AI core <span class="mono" id="coreState">idle</span></h2>
+      <div class="core-wrap" id="coreWrap">
+        <div class="core-hint">Turn on the camera, then move your hand to rotate it — <b>pinch</b> thumb and index finger to scale it.</div>
+      </div>
+    </div>
+
     <div class="card reveal" style="transition-delay:0.05s;">
       <h2>Hand gesture <span class="mono" id="handState">off</span></h2>
       <div class="cam-wrap" id="camWrap">
@@ -347,6 +422,7 @@
 
     if(results.multiHandLandmarks && results.multiHandLandmarks.length){
       const lm = results.multiHandLandmarks[0];
+      window.__signalHandLandmarks = lm;
       ctx.strokeStyle = 'rgba(94,242,166,0.8)';
       ctx.lineWidth = 2;
       CONNECTIONS.forEach(([a,b]) => {
@@ -371,6 +447,7 @@
         lastGesture = g; lastGestureAt = now;
       }
     } else {
+      window.__signalHandLandmarks = null;
       gestureBadge.style.display = 'none';
     }
     ctx.restore();
@@ -390,12 +467,14 @@
     camEmpty.style.display = 'none';
 
     hands = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
-    hands.setOptions({ maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.6, minTrackingConfidence:0.6 });
+    hands.setOptions({ maxNumHands:1, modelComplexity:0, minDetectionConfidence:0.5, minTrackingConfidence:0.5 });
     hands.onResults(onHandsResult);
 
+    let frameCount = 0;
     async function loop(){
       if(!cameraOn) return;
-      await hands.send({ image: video });
+      frameCount++;
+      if(frameCount % 2 === 0){ await hands.send({ image: video }); }
       rafId = requestAnimationFrame(loop);
     }
     loop();
@@ -425,6 +504,103 @@
   camBtn.addEventListener('click', () => cameraOn ? stopCamera() : startCamera());
 
   setStatus();
+
+  /* ---------------- AI CORE (three.js, driven by hand tracking) ---------------- */
+  function initCore(){
+    if(typeof THREE === 'undefined'){ setTimeout(initCore, 150); return; }
+
+    const wrap = document.getElementById('coreWrap');
+    const coreState = document.getElementById('coreState');
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 100);
+    camera.position.z = 5;
+
+    const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+    renderer.setSize(w, h);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    wrap.appendChild(renderer.domElement);
+
+    const group = new THREE.Group();
+    scene.add(group);
+
+    // wireframe core
+    const coreGeo = new THREE.IcosahedronGeometry(1.3, 1);
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0x5EF2A6, wireframe:true, transparent:true, opacity:0.85 });
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    group.add(core);
+
+    // inner glow
+    const glowGeo = new THREE.IcosahedronGeometry(0.85, 1);
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x5EF2A6, transparent:true, opacity:0.10 });
+    group.add(new THREE.Mesh(glowGeo, glowMat));
+
+    // orbiting particle shell
+    const particleCount = 260;
+    const positions = new Float32Array(particleCount * 3);
+    for(let i=0;i<particleCount;i++){
+      const r = 1.8 + Math.random()*0.5;
+      const theta = Math.random()*Math.PI*2;
+      const phi = Math.acos((Math.random()*2)-1);
+      positions[i*3]   = r*Math.sin(phi)*Math.cos(theta);
+      positions[i*3+1] = r*Math.sin(phi)*Math.sin(theta);
+      positions[i*3+2] = r*Math.cos(phi);
+    }
+    const particleGeo = new THREE.BufferGeometry();
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const particleMat = new THREE.PointsMaterial({ color:0x8cf5c4, size:0.028, transparent:true, opacity:0.75 });
+    const particles = new THREE.Points(particleGeo, particleMat);
+    group.add(particles);
+
+    function onResize(){
+      const nw = wrap.clientWidth, nh = wrap.clientHeight;
+      camera.aspect = nw/nh; camera.updateProjectionMatrix();
+      renderer.setSize(nw, nh);
+    }
+    window.addEventListener('resize', onResize);
+
+    let targetRotX = 0, targetRotY = 0, curRotX = 0, curRotY = 0;
+    let targetScale = 1, curScale = 1;
+    let autoAngle = 0;
+
+    function dist3(a,b){ return Math.hypot(a.x-b.x, a.y-b.y, (a.z||0)-(b.z||0)); }
+
+    function animate(){
+      requestAnimationFrame(animate);
+      const lm = window.__signalHandLandmarks;
+
+      if(lm){
+        coreState.textContent = 'tracking hand';
+        const wrist = lm[0];
+        // map normalized hand position to rotation targets
+        targetRotY = (wrist.x - 0.5) * 3.2;
+        targetRotX = (wrist.y - 0.5) * -2.2;
+        const pinch = dist3(lm[4], lm[8]);
+        const norm = Math.min(1, Math.max(0, (pinch - 0.02) / 0.22));
+        targetScale = 0.7 + norm * 1.1;
+      } else {
+        coreState.textContent = 'idle';
+        autoAngle += 0.004;
+        targetRotY = Math.sin(autoAngle) * 0.6;
+        targetRotX = Math.cos(autoAngle*0.7) * 0.2;
+        targetScale = 1;
+      }
+
+      curRotX += (targetRotX - curRotX) * 0.08;
+      curRotY += (targetRotY - curRotY) * 0.08;
+      curScale += (targetScale - curScale) * 0.08;
+
+      group.rotation.x = curRotX;
+      group.rotation.y = curRotY;
+      group.scale.setScalar(curScale);
+      particles.rotation.y -= 0.0015;
+
+      renderer.render(scene, camera);
+    }
+    animate();
+  }
+  initCore();
 
   /* ---------------- SCROLL REVEAL ---------------- */
   const revealEls = document.querySelectorAll('.reveal');
