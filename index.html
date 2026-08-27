@@ -464,7 +464,7 @@
     handLandmarker = await visionModule.HandLandmarker.createFromOptions(filesetResolver, {
       baseOptions: {
         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-        delegate: 'GPU'
+        delegate: 'CPU'
       },
       runningMode: 'VIDEO',
       numHands: 1
@@ -503,9 +503,17 @@
     function loop(){
       if(!cameraOn) return;
       if(video.readyState >= 2){
-        const result = landmarker.detectForVideo(video, performance.now());
-        const lm = (result.landmarks && result.landmarks.length) ? result.landmarks[0] : null;
-        processLandmarks(lm);
+        try{
+          const result = landmarker.detectForVideo(video, performance.now());
+          const lm = (result.landmarks && result.landmarks.length) ? result.landmarks[0] : null;
+          processLandmarks(lm);
+        }catch(err){
+          logEvent('gesture', 'gesture', 'tracking error: ' + err.message);
+          cameraOn = false;
+          camEmpty.textContent = 'Hand tracking hit an error — try turning the camera off and on again.';
+          camEmpty.style.display = 'flex';
+          return;
+        }
       }
       rafId = requestAnimationFrame(loop);
     }
