@@ -196,7 +196,7 @@
     <div class="card core-card reveal" style="transition-delay:0s;">
       <h2>AI core <span class="mono" id="coreState">idle</span></h2>
       <div class="core-wrap" id="coreWrap">
-        <div class="core-hint">Turn on the camera, then move your hand to rotate it — <b>pinch</b> thumb and index finger to scale it.</div>
+        <div class="core-hint">Move your hand to rotate it, <b>pinch</b> to scale it — and it glows brighter when your mic picks up sound.</div>
       </div>
     </div>
 
@@ -305,10 +305,13 @@
     const data = new Uint8Array(analyser.frequencyBinCount);
     function tick(){
       analyser.getByteFrequencyData(data);
+      let sum = 0;
       meterBars.forEach((bar, i) => {
         const v = data[i % data.length] || 0;
+        sum += v;
         bar.style.height = Math.max(4, (v/255)*26) + 'px';
       });
+      window.__signalMicLevel = (sum / meterBars.length) / 255;
       meterRaf = requestAnimationFrame(tick);
     }
     tick();
@@ -317,6 +320,7 @@
   function stopMeter(){
     if(meterRaf) cancelAnimationFrame(meterRaf);
     meterBars.forEach(b => b.style.height = '4px');
+    window.__signalMicLevel = 0;
     if(audioCtx) audioCtx.close().catch(()=>{});
   }
 
@@ -546,7 +550,7 @@
 
   setStatus();
 
-  /* ---------------- AI CORE (three.js, driven by hand tracking) ---------------- */
+  /* ---------------- AI CORE (three.js, driven by hand tracking + voice) ---------------- */
   function initCore(){
     if(typeof THREE === 'undefined'){ setTimeout(initCore, 150); return; }
 
@@ -561,38 +565,125 @@
     const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
     renderer.setSize(w, h);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    if(THREE.ACESFilmicToneMapping){ renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15; }
     wrap.appendChild(renderer.domElement);
+
+    // soft circular glow texture, built on a canvas — turns flat square
+    // points into soft glowing orbs instead of hard dots
+    function makeGlowTexture(inner, outer){
+      const size = 128;
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      const g = c.getContext('2d');
+      const grad = g.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+      grad.addColorStop(0, inner);
+      grad.addColorStop(0.4, inner);
+      grad.addColorStop(1, outer);
+      g.fillStyle = grad;
+      g.fillRect(0, 0, size, size);
+      const tex = new THREE.CanvasTexture(c);
+      tex.needsUpdate = true;
+      return tex;
+    }
+    const glowTex = makeGlowTexture('rgba(255,255,255,0.9)', 'rgba(255,255,255,0)');
+    const softTex = makeGlowTexture('rgba(255,255,255,0.55)', 'rgba(255,255,255,0)');
 
     const group = new THREE.Group();
     scene.add(group);
 
-    // wireframe core
-    const coreGeo = new THREE.IcosahedronGeometry(1.3, 1);
-    const coreMat = new THREE.MeshBasicMaterial({ color: 0x5EF2A6, wireframe:true, transparent:true, opacity:0.85 });
-    const core = new THREE.Mesh(coreGeo, coreMat);
-    group.add(core);
-
-    // inner glow
-    const glowGeo = new THREE.IcosahedronGeometry(0.85, 1);
-    const glowMat = new THREE.MeshBasicMaterial({ color: 0x5EF2A6, transparent:true, opacity:0.10 });
-    group.add(new THREE.Mesh(glowGeo, glowMat));
-
-    // orbiting particle shell
-    const particleCount = 260;
-    const positions = new Float32Array(particleCount * 3);
-    for(let i=0;i<particleCount;i++){
-      const r = 1.8 + Math.random()*0.5;
+    // distant starfield for depth (parallax backdrop, not part of the core group)
+    const STAR_COUNT = 500;
+    const starPos = new Float32Array(STAR_COUNT * 3);
+    for(let i=0;i<STAR_COUNT;i++){
+      const r = 4 + Math.random()*4;
       const theta = Math.random()*Math.PI*2;
       const phi = Math.acos((Math.random()*2)-1);
-      positions[i*3]   = r*Math.sin(phi)*Math.cos(theta);
-      positions[i*3+1] = r*Math.sin(phi)*Math.sin(theta);
-      positions[i*3+2] = r*Math.cos(phi);
+      starPos[i*3]   = r*Math.sin(phi)*Math.cos(theta);
+      starPos[i*3+1] = r*Math.sin(phi)*Math.sin(theta);
+      starPos[i*3+2] = r*Math.cos(phi) - 2;
     }
-    const particleGeo = new THREE.BufferGeometry();
-    particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const particleMat = new THREE.PointsMaterial({ color:0x8cf5c4, size:0.028, transparent:true, opacity:0.75 });
-    const particles = new THREE.Points(particleGeo, particleMat);
-    group.add(particles);
+    const starGeo = new THREE.BufferGeometry();
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({
+      size:0.02, color:0xaab4c8, map:softTex, transparent:true, opacity:0.5,
+      blending: THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true
+    });
+    scene.add(new THREE.Points(starGeo, starMat));
+
+    // color palette for the nebula — pink / teal / amber / violet
+    const palette = [
+      new THREE.Color(0xff6bd6), new THREE.Color(0x5EF2A6),
+      new THREE.Color(0xffb24a), new THREE.Color(0x8c7bff),
+      new THREE.Color(0x5ecbf2)
+    ];
+
+    // dense nebula particle sphere — two layers, small tight + larger soft, for depth
+    function makeNebulaLayer(count, minR, maxR, size, opacity){
+      const pos = new Float32Array(count * 3);
+      const col = new Float32Array(count * 3);
+      for(let i=0;i<count;i++){
+        const r = minR + Math.pow(Math.random(), 0.6) * (maxR-minR);
+        const theta = Math.random()*Math.PI*2;
+        const phi = Math.acos((Math.random()*2)-1);
+        pos[i*3]   = r*Math.sin(phi)*Math.cos(theta);
+        pos[i*3+1] = r*Math.sin(phi)*Math.sin(theta);
+        pos[i*3+2] = r*Math.cos(phi);
+        const c = palette[Math.floor(Math.random()*palette.length)];
+        col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      const mat = new THREE.PointsMaterial({
+        size, vertexColors:true, map:glowTex, transparent:true, opacity,
+        blending: THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true
+      });
+      return new THREE.Points(geo, mat);
+    }
+    const nebulaCore = makeNebulaLayer(1400, 0.15, 0.75, 0.10, 0.95);
+    const nebulaHalo = makeNebulaLayer(1200, 0.6, 1.5, 0.055, 0.55);
+    group.add(nebulaCore, nebulaHalo);
+
+    // bright bloom-style core glow (large soft sprite, additive)
+    const bloomSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: glowTex, color:0xffffff, transparent:true, opacity:0.55,
+      blending: THREE.AdditiveBlending, depthWrite:false
+    }));
+    bloomSprite.scale.set(1.8, 1.8, 1);
+    group.add(bloomSprite);
+
+    // hot white-hot center point
+    const hotCore = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: glowTex, color:0xfff4e0, transparent:true, opacity:0.9,
+      blending: THREE.AdditiveBlending, depthWrite:false
+    }));
+    hotCore.scale.set(0.55, 0.55, 1);
+    group.add(hotCore);
+
+    // thin sci-fi HUD rings (no text, just geometry)
+    function makeRing(radius, tilt, color, opacity){
+      const ringGeo = new THREE.TorusGeometry(radius, 0.005, 8, 160);
+      const ringMat = new THREE.MeshBasicMaterial({ color, transparent:true, opacity, blending:THREE.AdditiveBlending });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = tilt;
+      group.add(ring);
+      return ring;
+    }
+    const ringA = makeRing(1.75, Math.PI/2.1, 0x5EF2A6, 0.4);
+    const ringB = makeRing(2.05, Math.PI/2.6, 0xff6bd6, 0.28);
+    const ringC = makeRing(2.3, Math.PI/1.8, 0x8c7bff, 0.16);
+
+    // orbiting crescent arcs, independent spin, additive glow
+    function makeArc(radius, tube, tilt, arcLen, color, opacity){
+      const arcGeo = new THREE.TorusGeometry(radius, tube, 8, 64, arcLen);
+      const arcMat = new THREE.MeshBasicMaterial({ color, transparent:true, opacity, blending:THREE.AdditiveBlending });
+      const arc = new THREE.Mesh(arcGeo, arcMat);
+      arc.rotation.x = tilt;
+      group.add(arc);
+      return arc;
+    }
+    const arc1 = makeArc(1.55, 0.018, Math.PI/3.4, Math.PI*0.75, 0xffffff, 0.9);
+    const arc2 = makeArc(1.9, 0.01, Math.PI/1.5, Math.PI*0.5, 0x5ecbf2, 0.5);
 
     function onResize(){
       const nw = wrap.clientWidth, nh = wrap.clientHeight;
@@ -604,38 +695,62 @@
     let targetRotX = 0, targetRotY = 0, curRotX = 0, curRotY = 0;
     let targetScale = 1, curScale = 1;
     let autoAngle = 0;
+    let hue = 0;
 
     function dist3(a,b){ return Math.hypot(a.x-b.x, a.y-b.y, (a.z||0)-(b.z||0)); }
 
     function animate(){
       requestAnimationFrame(animate);
       const lm = window.__signalHandLandmarks;
+      const micLevel = window.__signalMicLevel || 0;
 
       if(lm){
         coreState.textContent = 'tracking hand';
         const wrist = lm[0];
-        // map normalized hand position to rotation targets
         targetRotY = (wrist.x - 0.5) * 3.2;
         targetRotX = (wrist.y - 0.5) * -2.2;
         const pinch = dist3(lm[4], lm[8]);
-        const norm = Math.min(1, Math.max(0, (pinch - 0.02) / 0.22));
-        targetScale = 0.7 + norm * 1.1;
+        const norm = Math.min(1, Math.max(0, (pinch - 0.02) / 0.28));
+        targetScale = 0.4 + norm * 3.2;
       } else {
-        coreState.textContent = 'idle';
+        coreState.textContent = micLevel > 0.06 ? 'listening' : 'idle';
         autoAngle += 0.004;
         targetRotY = Math.sin(autoAngle) * 0.6;
         targetRotX = Math.cos(autoAngle*0.7) * 0.2;
         targetScale = 1;
       }
 
+      // voice makes it swell slightly and glow brighter
+      const micPulse = 1 + Math.min(micLevel * 1.2, 0.35);
+
       curRotX += (targetRotX - curRotX) * 0.08;
       curRotY += (targetRotY - curRotY) * 0.08;
-      curScale += (targetScale - curScale) * 0.08;
+      curScale += (targetScale*micPulse - curScale) * 0.1;
 
       group.rotation.x = curRotX;
       group.rotation.y = curRotY;
       group.scale.setScalar(curScale);
-      particles.rotation.y -= 0.0015;
+
+      nebulaCore.rotation.y -= 0.0018;
+      nebulaCore.rotation.x += 0.0008;
+      nebulaHalo.rotation.y -= 0.0009;
+      nebulaHalo.rotation.x -= 0.0005;
+
+      bloomSprite.material.opacity = 0.4 + micLevel * 0.5;
+      hotCore.material.opacity = 0.75 + micLevel * 0.25;
+      const hotScale = 0.5 + micLevel * 0.4;
+      hotCore.scale.set(hotScale, hotScale, 1);
+
+      ringA.rotation.z += 0.0025;
+      ringB.rotation.z -= 0.0018;
+      ringC.rotation.z += 0.0012;
+      arc1.rotation.z += 0.006;
+      arc2.rotation.z -= 0.004;
+
+      // slow color drift / shimmer across the nebula
+      hue += 0.0006;
+      nebulaCore.material.opacity = 0.85 + Math.sin(hue*6) * 0.1 + micLevel*0.15;
+      nebulaHalo.material.opacity = 0.45 + Math.sin(hue*5 + 1) * 0.1 + micLevel*0.1;
 
       renderer.render(scene, camera);
     }
