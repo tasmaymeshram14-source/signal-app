@@ -415,34 +415,41 @@
     return null;
   }
 
-  function processLandmarks(lm){
+  function processLandmarks(handsArr){
     ctx.save();
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    if(lm){
-      window.__signalHandLandmarks = lm;
-      ctx.strokeStyle = 'rgba(94,242,166,0.8)';
-      ctx.lineWidth = 2;
-      CONNECTIONS.forEach(([a,b]) => {
-        ctx.beginPath();
-        ctx.moveTo(lm[a].x*canvas.width, lm[a].y*canvas.height);
-        ctx.lineTo(lm[b].x*canvas.width, lm[b].y*canvas.height);
-        ctx.stroke();
-      });
-      ctx.fillStyle = '#5EF2A6';
-      lm.forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p.x*canvas.width, p.y*canvas.height, 3, 0, Math.PI*2);
-        ctx.fill();
+    if(handsArr && handsArr.length){
+      window.__signalHandLandmarks = handsArr[0];
+
+      const gestures = [];
+      handsArr.forEach(lm => {
+        ctx.strokeStyle = 'rgba(94,242,166,0.8)';
+        ctx.lineWidth = 2;
+        CONNECTIONS.forEach(([a,b]) => {
+          ctx.beginPath();
+          ctx.moveTo(lm[a].x*canvas.width, lm[a].y*canvas.height);
+          ctx.lineTo(lm[b].x*canvas.width, lm[b].y*canvas.height);
+          ctx.stroke();
+        });
+        ctx.fillStyle = '#5EF2A6';
+        lm.forEach(p => {
+          ctx.beginPath();
+          ctx.arc(p.x*canvas.width, p.y*canvas.height, 3, 0, Math.PI*2);
+          ctx.fill();
+        });
+        const g = classifyGesture(lm);
+        if(g) gestures.push(g);
       });
 
-      const g = classifyGesture(lm);
       gestureBadge.style.display = 'block';
-      gestureBadge.textContent = g || 'reading…';
+      gestureBadge.textContent = gestures.length ? gestures.join('  ·  ') : 'reading…';
+
       const now = Date.now();
-      if(g && (g !== lastGesture || now - lastGestureAt > 1500)){
-        logEvent('gesture', 'gesture', g);
-        lastGesture = g; lastGestureAt = now;
+      const gestureKey = gestures.join('+');
+      if(gestures.length && (gestureKey !== lastGesture || now - lastGestureAt > 1500)){
+        logEvent('gesture', 'gesture', gestures.length > 1 ? gestures.join(' + ') : gestures[0]);
+        lastGesture = gestureKey; lastGestureAt = now;
       }
     } else {
       window.__signalHandLandmarks = null;
@@ -467,7 +474,7 @@
         delegate: 'CPU'
       },
       runningMode: 'VIDEO',
-      numHands: 1
+      numHands: 2
     });
     return handLandmarker;
   }
@@ -505,8 +512,8 @@
       if(video.readyState >= 2){
         try{
           const result = landmarker.detectForVideo(video, performance.now());
-          const lm = (result.landmarks && result.landmarks.length) ? result.landmarks[0] : null;
-          processLandmarks(lm);
+          const handsArr = (result.landmarks && result.landmarks.length) ? result.landmarks : null;
+          processLandmarks(handsArr);
         }catch(err){
           logEvent('gesture', 'gesture', 'tracking error: ' + err.message);
           cameraOn = false;
