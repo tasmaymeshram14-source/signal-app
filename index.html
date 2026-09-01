@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Signal — AI Voice & Gesture Assistant</title>
+<title>Signal — AI Voice, Text & Gesture Assistant</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" defer></script>
@@ -145,9 +145,9 @@
     color:var(--ink-soft); font-size:13px; text-align:center; padding:20px; z-index:2;
   }
 
-  /* mic panel */
+  /* mic & chat panel */
   .transcript{
-    min-height:140px; max-height:220px; overflow-y:auto;
+    min-height:160px; max-height:240px; overflow-y:auto;
     background:#0d1116; border:1px solid var(--line); border-radius:10px;
     padding:14px; font-size:14px; color:var(--ink-soft); line-height:1.6; margin-bottom:12px;
   }
@@ -159,7 +159,18 @@
   .mic-meter{ display:flex; gap:4px; align-items:flex-end; height:24px; margin-bottom:14px; }
   .mic-meter span{ width:5px; background:var(--sig); border-radius:2px; height:4px; transition:height .08s ease; opacity:.85; }
 
-  .btn-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  /* Text input bar */
+  .chat-input-bar{
+    display:flex; gap:8px; margin-bottom:12px;
+  }
+  .chat-input-bar input{
+    flex:1; background:#0d1116; border:1px solid var(--line);
+    border-radius:9px; padding:10px 14px; color:var(--ink);
+    font-family:inherit; font-size:13.5px; outline:none; transition:border-color .15s ease;
+  }
+  .chat-input-bar input:focus{ border-color:var(--sig); }
+
+  .btn-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
   button{
     font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer;
     border-radius:9px; padding:10px 16px; border:1px solid var(--line);
@@ -173,6 +184,12 @@
   button:disabled{ opacity:0.45; cursor:default; }
   button:focus-visible{ outline:2px solid var(--sig); outline-offset:2px; }
 
+  .toggle-label{
+    display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft);
+    cursor:pointer; user-select:none; margin-left:auto;
+  }
+  .toggle-label input{ cursor:pointer; accent-color:var(--sig); }
+
   /* log */
   .log-card{ grid-column: 1 / -1; }
   .log{ max-height:200px; overflow-y:auto; display:flex; flex-direction:column-reverse; gap:8px; }
@@ -181,6 +198,7 @@
   .log-row .tag{ flex:none; font-size:11px; padding:2px 7px; border-radius:5px; font-weight:700; }
   .tag.gesture{ background:rgba(94,242,166,0.12); color:var(--sig); }
   .tag.voice{ background:rgba(255,107,74,0.12); color:var(--warn); }
+  .tag.text{ background:rgba(140,160,255,0.15); color:#b4c2ff; }
   .tag.assist{ background:rgba(140,160,255,0.15); color:#b4c2ff; }
   .log-empty{ color:var(--ink-soft); font-size:13px; }
 </style>
@@ -188,7 +206,7 @@
 <body>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>signal · <span style="font-size: 14px; font-weight: 500; color: var(--ink-soft);">gemini ai</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>signal · <span style="font-size: 14px; font-weight: 500; color: var(--ink-soft);">voice & text ai</span></div>
   <div class="header-actions">
     <div class="status mono" id="statusLine">idle · ready</div>
     <button class="key-btn" id="keyBtn">🔑 <span id="keyBtnLabel">Set Gemini Key</span></button>
@@ -200,7 +218,7 @@
   <div class="api-banner" id="apiBanner">
     <div class="info">
       <h4 id="bannerTitle">Connect Google Gemini Brain</h4>
-      <p id="bannerDesc">Enter your Google AI Studio API Key (starts with AIzaSy) to enable real-time spoken intelligence.</p>
+      <p id="bannerDesc">Enter your Google AI Studio API Key (starts with AIzaSy) to enable real-time intelligence.</p>
     </div>
     <div class="api-input-wrap">
       <input type="password" id="apiKeyInput" placeholder="Paste Gemini Key (AIzaSy...)" autocomplete="off">
@@ -211,15 +229,15 @@
 
   <div class="lead">
     <span class="eyebrow">interactive multimodal assistant</span>
-    <h1>Speak naturally & control with your hands.</h1>
-    <p>Signal uses Gemini 1.5/2.0 Flash for spoken conversational responses and MediaPipe + Three.js for real-time gestures.</p>
+    <h1>Speak, write, or gesture naturally.</h1>
+    <p>Signal accepts voice or typed input with Gemini intelligence, plus real-time hand gesture tracking via MediaPipe.</p>
   </div>
 
   <div class="features">
     <div class="feature">
-      <div class="icon">🧠</div>
-      <h3>Real AI Conversational Brain</h3>
-      <p>Answers any question concisely, naturally, and intelligently in 1-2 spoken sentences.</p>
+      <div class="icon">💬</div>
+      <h3>Voice & Text Hybrid</h3>
+      <p>Ask questions by speaking aloud or typing into the chat box anytime.</p>
     </div>
     <div class="feature">
       <div class="icon">✋</div>
@@ -229,7 +247,7 @@
     <div class="feature">
       <div class="icon">⚡</div>
       <h3>Echo Cancellation</h3>
-      <p>Hard-mutes microphone listening while speaking so it never triggers or loops on itself.</p>
+      <p>Hard-mutes microphone listening while speaking so it never loops on itself.</p>
     </div>
   </div>
 
@@ -255,21 +273,31 @@
     </div>
 
     <div class="card">
-      <h2>Voice & Speech <span class="mono" id="micState">off</span></h2>
+      <h2>Conversation (Voice & Text) <span class="mono" id="micState">off</span></h2>
       <div class="mic-meter" id="micMeter"></div>
       <div class="transcript" id="transcript">
-        <div class="system-hint">Mic is off. Turn on mic and ask any question aloud.</div>
+        <div class="system-hint">Type a message below or turn on the microphone to speak.</div>
       </div>
+
+      <!-- Writing / Text Input Box -->
+      <div class="chat-input-bar">
+        <input type="text" id="chatInput" placeholder="Type your message here (Press Enter to send)..." autocomplete="off">
+        <button class="primary" id="sendBtn">Send</button>
+      </div>
+
       <div class="btn-row">
         <button class="primary" id="micBtn">Turn on mic</button>
         <button id="stopVoiceBtn" style="display:none;" class="warn">Silence Voice</button>
+        <label class="toggle-label">
+          <input type="checkbox" id="ttsToggle" checked> Speak reply aloud
+        </label>
       </div>
     </div>
 
     <div class="card log-card">
       <h2>Activity Log</h2>
       <div class="log" id="log">
-        <div class="log-empty">Events will appear here as you speak or gesture.</div>
+        <div class="log-empty">Events will appear here as you speak, write, or gesture.</div>
       </div>
     </div>
   </div>
@@ -292,6 +320,7 @@
   const bannerDesc = document.getElementById('bannerDesc');
   const keyBtn = document.getElementById('keyBtn');
   const keyBtnLabel = document.getElementById('keyBtnLabel');
+  const ttsToggle = document.getElementById('ttsToggle');
 
   let GEMINI_KEY = localStorage.getItem('signal_gemini_key') || '';
 
@@ -299,7 +328,7 @@
     if(GEMINI_KEY){
       apiBanner.classList.add('connected');
       bannerTitle.textContent = "Gemini Brain Connected ⚡";
-      bannerDesc.textContent = "Gemini Flash active. Ready for intelligent spoken responses.";
+      bannerDesc.textContent = "Gemini Flash active. Ready for intelligent responses.";
       apiKeyInput.value = GEMINI_KEY;
       clearKeyBtn.style.display = 'inline-block';
       keyBtn.classList.add('has-key');
@@ -373,7 +402,7 @@
     const payload = {
       contents: promptHistory,
       systemInstruction: {
-        parts: [{ text: "You are Signal, a helpful AI voice assistant. Provide short, concise, spoken conversational responses (1 to 2 sentences max). Never use asterisks, markdown, bullet points, or lists because your response is read aloud directly to the user." }]
+        parts: [{ text: "You are Signal, a helpful AI assistant. Provide short, concise, natural responses (1 to 2 sentences max). Never use asterisks, markdown, bullet points, or lists because your response may be read aloud directly to the user." }]
       },
       generationConfig: {
         maxOutputTokens: 150,
@@ -394,7 +423,7 @@
     return response.json();
   }
 
-  async function askGemini(userQuery){
+  async function askGemini(userQuery, isFromVoice = false){
     if(!GEMINI_KEY){
       respond("Please paste your Gemini API key in the top settings banner to enable AI answers.");
       return;
@@ -441,6 +470,24 @@
       respond(errorMsg);
     }
   }
+
+  /* ---------------- WRITING / TEXT INPUT ---------------- */
+  const chatInput = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('sendBtn');
+
+  function handleTextSubmit(){
+    const text = chatInput.value.trim();
+    if(text){
+      chatInput.value = '';
+      logEvent('text', 'text', `"${text}"`);
+      askGemini(text, false);
+    }
+  }
+
+  sendBtn.addEventListener('click', handleTextSubmit);
+  chatInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') handleTextSubmit();
+  });
 
   /* ---------------- SPEECH SYNTHESIS & RECOGNITION ---------------- */
   const micBtn = document.getElementById('micBtn');
@@ -492,7 +539,9 @@
     appendTranscript('assistant', cleanText);
     logEvent('assist', 'assistant', cleanText);
     
-    if(!('speechSynthesis' in window)){
+    if(!ttsToggle.checked || !('speechSynthesis' in window)){
+      coreState.textContent = 'idle';
+      setStatus();
       resumeRecognition();
       return;
     }
@@ -594,7 +643,7 @@
       const said = e.results[lastIndex][0].transcript.trim();
       if(said){
         logEvent('voice', 'voice', `"${said}"`);
-        askGemini(said);
+        askGemini(said, true);
       }
     };
 
@@ -623,7 +672,7 @@
     micState.textContent = 'on';
     micBtn.textContent = 'Turn off mic';
     micBtn.classList.remove('primary');
-    transcriptEl.innerHTML = "<div class='system-hint'>Listening — ask me anything...</div>";
+    transcriptEl.innerHTML = "<div class='system-hint'>Listening — speak or type your question...</div>";
     setStatus();
   }
 
