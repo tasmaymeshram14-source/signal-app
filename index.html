@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Signal — voice & gesture assistant</title>
+<title>Signal — AI Voice & Gesture Assistant</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" defer></script>
@@ -13,8 +13,10 @@
   :root{
     --bg:#0B0E11; --panel:#12161B; --line:#212830; --grid: rgba(255,255,255,0.035);
     --ink:#EAEFF3; --ink-soft:#8A96A3;
-    --sig:#5EF2A6;   /* signal green — the one accent */
+    --sig:#5EF2A6;   /* signal green */
+    --sig-glow: rgba(94,242,166,0.35);
     --warn:#FF6B4A;
+    --ai:#8C7BFF;
   }
   *{ box-sizing:border-box; }
   body{
@@ -33,18 +35,30 @@
 
   header{
     display:flex; align-items:center; justify-content:space-between;
-    padding:22px 24px; border-bottom:1px solid var(--line);
-    backdrop-filter: blur(6px);
+    padding:18px 24px; border-bottom:1px solid var(--line);
+    backdrop-filter: blur(6px); position: sticky; top:0; z-index: 100;
+    background: rgba(11, 14, 17, 0.85);
   }
   .brand{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:19px; letter-spacing:-0.02em; }
   .dot{ width:9px; height:9px; border-radius:50%; background:var(--ink-soft); flex:none; }
   .dot.live{ background:var(--sig); box-shadow:0 0 0 0 rgba(94,242,166,0.6); animation:ring 1.6s infinite; }
+  .dot.thinking{ background:var(--ai); box-shadow:0 0 0 0 rgba(140,123,255,0.6); animation:ring 1s infinite; }
   @keyframes ring{
     0%{ box-shadow:0 0 0 0 rgba(94,242,166,0.45); }
     70%{ box-shadow:0 0 0 8px rgba(94,242,166,0); }
     100%{ box-shadow:0 0 0 0 rgba(94,242,166,0); }
   }
+  .header-actions{ display:flex; align-items:center; gap:14px; }
   header .status{ font-size:12px; color:var(--ink-soft); }
+
+  /* API Key button & modal */
+  .key-btn{
+    font-size:12px; padding:6px 12px; border-radius:8px;
+    background:rgba(255,255,255,0.06); border:1px solid var(--line);
+    color:var(--ink); cursor:pointer; display:flex; align-items:center; gap:6px;
+  }
+  .key-btn.has-key{ border-color:rgba(94,242,166,0.4); color:var(--sig); background:rgba(94,242,166,0.08); }
+  .key-btn:hover{ border-color:var(--sig); }
 
   main{ max-width:1080px; margin:0 auto; padding:28px 20px 60px; }
   .eyebrow{
@@ -53,11 +67,30 @@
     background: rgba(94,242,166,0.06); padding:6px 12px; border-radius:100px;
     margin-bottom:18px;
   }
-  .lead{ max-width:62ch; margin-bottom:34px; }
-  .lead h1{ font-size:clamp(28px,5vw,42px); margin:0 0 12px; letter-spacing:-0.03em; line-height:1.08; }
-  .lead p{ color:var(--ink-soft); font-size:15.5px; line-height:1.65; margin:0; max-width:54ch; }
+  .lead{ max-width:64ch; margin-bottom:30px; }
+  .lead h1{ font-size:clamp(28px,5vw,40px); margin:0 0 12px; letter-spacing:-0.03em; line-height:1.1; }
+  .lead p{ color:var(--ink-soft); font-size:15px; line-height:1.6; margin:0; }
 
-  .features{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:38px; }
+  /* API Key Banner */
+  .api-banner{
+    background: linear-gradient(145deg, rgba(140,123,255,0.1), rgba(18,22,27,0.8));
+    border: 1px solid rgba(140,123,255,0.35);
+    border-radius: 12px; padding: 16px 20px;
+    margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .api-banner.connected{ border-color: rgba(94,242,166,0.3); background: linear-gradient(145deg, rgba(94,242,166,0.08), rgba(18,22,27,0.8)); }
+  .api-banner .info h4{ margin:0 0 4px; font-size:14px; color:var(--ink); }
+  .api-banner .info p{ margin:0; font-size:12.5px; color:var(--ink-soft); }
+  .api-input-wrap{ display: flex; gap: 8px; flex: 1; max-width: 440px; }
+  .api-input-wrap input{
+    flex: 1; background: #0B0E11; border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 12px; color: var(--ink);
+    font-family: inherit; font-size: 13px; outline: none;
+  }
+  .api-input-wrap input:focus{ border-color: var(--sig); }
+
+  .features{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:34px; }
   @media (max-width:860px){ .features{ grid-template-columns:1fr; } }
   .feature{
     border:1px solid var(--line); border-radius:12px; padding:16px;
@@ -91,8 +124,9 @@
   .core-wrap canvas{ position:absolute; inset:0; width:100%; height:100%; }
   .core-hint{
     position:absolute; left:14px; bottom:12px; z-index:2;
-    font-size:12.5px; color:var(--ink-soft); background:rgba(0,0,0,0.4);
-    padding:6px 10px; border-radius:8px; backdrop-filter: blur(3px);
+    font-size:12px; color:var(--ink-soft); background:rgba(0,0,0,0.6);
+    padding:6px 12px; border-radius:8px; backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.08);
   }
   .core-hint b{ color:var(--sig); }
 
@@ -103,9 +137,9 @@
   canvas{ transform:scaleX(-1); }
   .gesture-badge{
     position:absolute; left:12px; bottom:12px; z-index:3;
-    background:rgba(0,0,0,0.55); border:1px solid rgba(94,242,166,0.4);
+    background:rgba(0,0,0,0.65); border:1px solid rgba(94,242,166,0.4);
     color:var(--sig); padding:6px 12px; border-radius:100px; font-size:13px; font-weight:700;
-    backdrop-filter: blur(3px);
+    backdrop-filter: blur(4px);
   }
   .cam-empty{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
@@ -114,94 +148,108 @@
 
   /* mic panel */
   .transcript{
-    min-height:120px; background:#0d1116; border:1px solid var(--line); border-radius:10px;
+    min-height:140px; max-height:220px; overflow-y:auto;
+    background:#0d1116; border:1px solid var(--line); border-radius:10px;
     padding:14px; font-size:14px; color:var(--ink-soft); line-height:1.6; margin-bottom:12px;
   }
-  .transcript .final{ color:var(--ink); }
-  .mic-meter{ display:flex; gap:4px; align-items:flex-end; height:26px; margin-bottom:14px; }
+  .transcript .msg{ margin-bottom: 8px; }
+  .transcript .user{ color:var(--ink); font-weight: 500; }
+  .transcript .assistant{ color:var(--sig); }
+  .transcript .system-hint{ font-style: italic; color:#687684; font-size: 13px; }
+  
+  .mic-meter{ display:flex; gap:4px; align-items:flex-end; height:24px; margin-bottom:14px; }
   .mic-meter span{ width:5px; background:var(--sig); border-radius:2px; height:4px; transition:height .08s ease; opacity:.85; }
 
   .btn-row{ display:flex; gap:10px; flex-wrap:wrap; }
   button{
     font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer;
-    border-radius:9px; padding:11px 16px; border:1px solid var(--line);
+    border-radius:9px; padding:10px 16px; border:1px solid var(--line);
     background:#171d24; color:var(--ink); transition:background .15s ease, border-color .15s ease;
   }
   button:hover{ border-color:#33404d; }
   button.primary{ background:var(--sig); color:#04120b; border-color:var(--sig); }
   button.primary:hover{ background:#7bf5b8; }
+  button.warn{ background:rgba(255,107,74,0.15); color:var(--warn); border-color:rgba(255,107,74,0.4); }
+  button.warn:hover{ background:rgba(255,107,74,0.25); }
   button:disabled{ opacity:0.45; cursor:default; }
   button:focus-visible{ outline:2px solid var(--sig); outline-offset:2px; }
 
   /* log */
   .log-card{ grid-column: 1 / -1; }
-  .log{ max-height:220px; overflow-y:auto; display:flex; flex-direction:column-reverse; gap:8px; }
+  .log{ max-height:200px; overflow-y:auto; display:flex; flex-direction:column-reverse; gap:8px; }
   .log-row{ display:flex; gap:10px; font-size:13px; align-items:baseline; }
   .log-row .t{ color:#57616e; font-size:11px; flex:none; width:66px; }
   .log-row .tag{ flex:none; font-size:11px; padding:2px 7px; border-radius:5px; font-weight:700; }
   .tag.gesture{ background:rgba(94,242,166,0.12); color:var(--sig); }
   .tag.voice{ background:rgba(255,107,74,0.12); color:var(--warn); }
-  .tag.assist{ background:rgba(140,160,255,0.12); color:#9db2ff; }
+  .tag.assist{ background:rgba(140,160,255,0.15); color:#b4c2ff; }
   .log-empty{ color:var(--ink-soft); font-size:13px; }
 
-  .note{
-    grid-column:1/-1; font-size:12.5px; color:var(--ink-soft); line-height:1.6;
-    border-top:1px solid var(--line); padding-top:16px; margin-top:4px;
-  }
-  .note b{ color:var(--ink); }
-
   .reveal{
-    opacity:0; transform:translateY(28px);
-    transition: opacity 0.7s cubic-bezier(.22,1,.36,1), transform 0.7s cubic-bezier(.22,1,.36,1);
+    opacity:0; transform:translateY(24px);
+    transition: opacity 0.6s cubic-bezier(.22,1,.36,1), transform 0.6s cubic-bezier(.22,1,.36,1);
   }
   .reveal.in{ opacity:1; transform:translateY(0); }
-  @media (prefers-reduced-motion: reduce){
-    .reveal{ opacity:1; transform:none; transition:none; }
-  }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>signal</div>
-  <div class="status mono" id="statusLine">idle · nothing enabled</div>
+  <div class="brand"><span class="dot" id="liveDot"></span>signal · <span style="font-size: 14px; font-weight: 500; color: var(--ink-soft);">gemini powered</span></div>
+  <div class="header-actions">
+    <div class="status mono" id="statusLine">idle · ready</div>
+    <button class="key-btn" id="keyBtn">🔑 <span id="keyBtnLabel">Set Gemini Key</span></button>
+  </div>
 </header>
 
 <main>
+  <!-- API Key Setup Banner -->
+  <div class="api-banner" id="apiBanner">
+    <div class="info">
+      <h4 id="bannerTitle">Connect Google Gemini Brain</h4>
+      <p id="bannerDesc">Enter your free Google Gemini API Key to enable real-time spoken intelligent answers.</p>
+    </div>
+    <div class="api-input-wrap">
+      <input type="password" id="apiKeyInput" placeholder="Paste AI Studio API Key (AIzaSy...)" autocomplete="off">
+      <button class="primary" id="saveKeyBtn">Save</button>
+      <button id="clearKeyBtn" style="display:none;" class="warn">Remove</button>
+    </div>
+  </div>
+
   <div class="lead reveal">
-    <span class="eyebrow">live demo · runs entirely in your browser</span>
-    <h1>Control it with your voice and your hands.</h1>
-    <p>Signal reads what you say and what you gesture — no keyboard, no mouse. Turn on your camera and mic below to try it live.</p>
+    <span class="eyebrow">interactive multimodal assistant</span>
+    <h1>Speak naturally & control with your hands.</h1>
+    <p>Signal uses Gemini 2.5 Flash for conversational responses and MediaPipe + Three.js for real-time gesture interaction.</p>
   </div>
 
   <div class="features">
-    <div class="feature reveal" style="transition-delay:0s;">
-      <div class="icon">✋</div>
-      <h3>Reads five gestures</h3>
-      <p>Open palm, fist, thumbs up, peace sign, and pointing — tracked live from your camera.</p>
+    <div class="feature reveal">
+      <div class="icon">🧠</div>
+      <h3>Real AI Conversational Brain</h3>
+      <p>Powered by Google Gemini to answer any question concisely, naturally, and intelligently.</p>
     </div>
     <div class="feature reveal" style="transition-delay:0.06s;">
-      <div class="icon">🎙</div>
-      <h3>Understands speech</h3>
-      <p>Real-time voice recognition with spoken replies, right in the browser — no app install.</p>
+      <div class="icon">✋</div>
+      <h3>Gesture & Core Control</h3>
+      <p>Rotate the 3D nebula with your hand or pinch to scale. Tracks 5 core gestures live.</p>
     </div>
     <div class="feature reveal" style="transition-delay:0.12s;">
       <div class="icon">⚡</div>
-      <h3>Nothing leaves your device</h3>
-      <p>Camera and mic processing happen locally — no video or audio is uploaded anywhere.</p>
+      <h3>No Self-Echo Audio Loop</h3>
+      <p>Intelligently pauses listening while speaking so it never talks over or loops with itself.</p>
     </div>
   </div>
 
   <div class="grid">
-    <div class="card core-card reveal" style="transition-delay:0s;">
-      <h2>AI core <span class="mono" id="coreState">idle</span></h2>
+    <div class="card core-card reveal">
+      <h2>AI Core <span class="mono" id="coreState">idle</span></h2>
       <div class="core-wrap" id="coreWrap">
-        <div class="core-hint">Move your hand to rotate it, <b>pinch</b> to scale it — and it glows brighter when your mic picks up sound.</div>
+        <div class="core-hint">Move your hand to rotate it, <b>pinch</b> to scale — glows purple when <b>thinking</b> and green when <b>speaking</b>.</div>
       </div>
     </div>
 
-    <div class="card reveal" style="transition-delay:0.05s;">
-      <h2>Hand gesture <span class="mono" id="handState">off</span></h2>
+    <div class="card reveal">
+      <h2>Hand Gesture Tracking <span class="mono" id="handState">off</span></h2>
       <div class="cam-wrap" id="camWrap">
         <div class="cam-empty" id="camEmpty">Camera is off. Turn it on to start gesture reading.</div>
         <video id="video" playsinline></video>
@@ -213,24 +261,23 @@
       </div>
     </div>
 
-    <div class="card reveal" style="transition-delay:0.15s;">
-      <h2>Voice <span class="mono" id="micState">off</span></h2>
+    <div class="card reveal">
+      <h2>Voice & Speech <span class="mono" id="micState">off</span></h2>
       <div class="mic-meter" id="micMeter"></div>
-      <div class="transcript" id="transcript">Mic is off. Turn it on and say something.</div>
+      <div class="transcript" id="transcript">
+        <div class="system-hint">Mic is off. Click below and ask any question aloud.</div>
+      </div>
       <div class="btn-row">
         <button class="primary" id="micBtn">Turn on mic</button>
+        <button id="stopVoiceBtn" style="display:none;">Silence Voice</button>
       </div>
     </div>
 
-    <div class="card log-card reveal" style="transition-delay:0.1s;">
-      <h2>Activity log</h2>
+    <div class="card log-card reveal">
+      <h2>Activity Log</h2>
       <div class="log" id="log">
-        <div class="log-empty">Events will show up here as you speak or gesture.</div>
+        <div class="log-empty">Events will appear here as you speak or gesture.</div>
       </div>
-    </div>
-
-    <div class="note reveal">
-      This build recognizes five gestures (open palm, fist, thumbs up, peace sign, pointing) and a handful of spoken commands ("hello", "what time is it", "stop listening") to show the control loop working end to end. <b>It isn't hooked up to a real AI model yet</b> — that's the next step, and it needs your own API key plus a small backend to keep that key private, since it can't run safely in a public webpage's code.
     </div>
   </div>
 </main>
@@ -240,14 +287,77 @@
   const statusLine = document.getElementById('statusLine');
   const liveDot = document.getElementById('liveDot');
   const logEl = document.getElementById('log');
-  let cameraOn = false, micOn = false;
+  const coreState = document.getElementById('coreState');
+  let cameraOn = false, micOn = false, isThinking = false, isSpeaking = false;
 
+  /* ---------------- API KEY & SETTINGS ---------------- */
+  const apiKeyInput = document.getElementById('apiKeyInput');
+  const saveKeyBtn = document.getElementById('saveKeyBtn');
+  const clearKeyBtn = document.getElementById('clearKeyBtn');
+  const apiBanner = document.getElementById('apiBanner');
+  const bannerTitle = document.getElementById('bannerTitle');
+  const bannerDesc = document.getElementById('bannerDesc');
+  const keyBtn = document.getElementById('keyBtn');
+  const keyBtnLabel = document.getElementById('keyBtnLabel');
+
+  let GEMINI_KEY = localStorage.getItem('signal_gemini_key') || '';
+
+  function updateKeyUI(){
+    if(GEMINI_KEY){
+      apiBanner.classList.add('connected');
+      bannerTitle.textContent = "Gemini Brain Connected ⚡";
+      bannerDesc.textContent = "Active model: Gemini Flash. Ready for natural spoken conversation.";
+      apiKeyInput.value = GEMINI_KEY;
+      clearKeyBtn.style.display = 'inline-block';
+      keyBtn.classList.add('has-key');
+      keyBtnLabel.textContent = 'Key Active';
+    } else {
+      apiBanner.classList.remove('connected');
+      bannerTitle.textContent = "Connect Google Gemini Brain";
+      bannerDesc.textContent = "Enter your Google AI Studio API Key to enable real-time intelligent responses.";
+      apiKeyInput.value = '';
+      clearKeyBtn.style.display = 'none';
+      keyBtn.classList.remove('has-key');
+      keyBtnLabel.textContent = 'Set Gemini Key';
+    }
+  }
+  updateKeyUI();
+
+  saveKeyBtn.addEventListener('click', () => {
+    const val = apiKeyInput.value.trim();
+    if(val){
+      GEMINI_KEY = val;
+      localStorage.setItem('signal_gemini_key', val);
+      updateKeyUI();
+      logEvent('assist', 'system', 'Gemini API key saved.');
+      respond("Gemini AI brain connected and ready.");
+    }
+  });
+
+  clearKeyBtn.addEventListener('click', () => {
+    GEMINI_KEY = '';
+    localStorage.removeItem('signal_gemini_key');
+    updateKeyUI();
+    logEvent('assist', 'system', 'Gemini API key removed.');
+  });
+
+  keyBtn.addEventListener('click', () => {
+    apiBanner.scrollIntoView({ behavior: 'smooth' });
+    apiKeyInput.focus();
+  });
+
+  /* ---------------- LOGGING & STATUS ---------------- */
   function setStatus(){
     const parts = [];
     if(cameraOn) parts.push('camera on');
     if(micOn) parts.push('mic on');
-    statusLine.textContent = parts.length ? parts.join(' · ') : 'idle · nothing enabled';
-    liveDot.classList.toggle('live', cameraOn || micOn);
+    if(isThinking) parts.push('AI thinking…');
+    if(isSpeaking) parts.push('speaking…');
+    statusLine.textContent = parts.length ? parts.join(' · ') : 'idle · ready';
+    
+    liveDot.className = 'dot';
+    if(isThinking) liveDot.classList.add('thinking');
+    else if(cameraOn || micOn) liveDot.classList.add('live');
   }
 
   function logEvent(tag, label, text){
@@ -261,11 +371,70 @@
     while(logEl.children.length > 40) logEl.removeChild(logEl.lastChild);
   }
 
-  /* ---------------- SPEECH ---------------- */
+  /* ---------------- CONVERSATION & GEMINI AI ---------------- */
+  const conversationHistory = [
+    {
+      role: 'user',
+      parts: [{ text: "System prompt: You are Signal, a futuristic, fast, concise voice assistant. Give spoken-friendly responses (1 to 2 sentences max). Do NOT use bullet points, asterisks, or markdown formatting because your answers are read aloud via speech synthesis." }]
+    },
+    {
+      role: 'model',
+      parts: [{ text: "Understood. I am Signal, ready to assist concisely and naturally." }]
+    }
+  ];
+
+  async function askGemini(userQuery){
+    if(!GEMINI_KEY){
+      respond("Please paste your Gemini API key in the top settings banner to enable my brain.");
+      return;
+    }
+
+    isThinking = true;
+    coreState.textContent = 'thinking…';
+    setStatus();
+    appendTranscript('user', userQuery);
+
+    conversationHistory.push({ role: 'user', parts: [{ text: userQuery }] });
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: conversationHistory })
+      });
+
+      if(!response.ok){
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `API error ${response.status}`);
+      }
+
+      const data = await response.json();
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't process that response.";
+      
+      conversationHistory.push({ role: 'model', parts: [{ text: reply }] });
+      // Keep conversation history compact
+      if(conversationHistory.length > 12){
+        conversationHistory.splice(2, 2);
+      }
+
+      isThinking = false;
+      respond(reply);
+    } catch(err) {
+      console.error('Gemini error:', err);
+      isThinking = false;
+      logEvent('voice', 'error', err.message);
+      respond("Sorry, I had trouble reaching the AI server. Check your API key.");
+    }
+  }
+
+  /* ---------------- SPEECH SYNTHESIS & RECOGNITION ---------------- */
   const micBtn = document.getElementById('micBtn');
   const micState = document.getElementById('micState');
   const transcriptEl = document.getElementById('transcript');
   const micMeter = document.getElementById('micMeter');
+  const stopVoiceBtn = document.getElementById('stopVoiceBtn');
+
   for(let i=0;i<24;i++){ const s=document.createElement('span'); micMeter.appendChild(s); }
   const meterBars = micMeter.querySelectorAll('span');
 
@@ -273,48 +442,77 @@
   let recognition = null;
   let audioCtx, analyser, micStream, meterRaf;
 
-  function respond(text){
-    logEvent('assist', 'assistant', text);
-    try{
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.rate = 1.02;
-      speechSynthesis.speak(utter);
-    }catch(e){}
+  function appendTranscript(sender, text){
+    const msg = document.createElement('div');
+    msg.className = `msg ${sender}`;
+    msg.innerHTML = `<b>${sender === 'user' ? 'You:' : 'Signal:'}</b> ${text}`;
+    transcriptEl.appendChild(msg);
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
   }
 
-  function handleCommand(said){
-    const s = said.toLowerCase();
-    if(s.includes('hello') || s.includes('hi')){
-      respond("Hello — I'm listening.");
-    } else if(s.includes('time')){
-      respond('It is ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + '.');
-    } else if(s.includes('stop')){
-      respond('Stopping the mic.');
-      stopMic();
-    } else {
-      respond("I heard: " + said);
-    }
+  function respond(text){
+    // Clean text of markdown asterisks/hashtags for smooth speech
+    const cleanText = text.replace(/[*_#`~\[\]]/g, '').trim();
+    appendTranscript('assistant', cleanText);
+    logEvent('assist', 'assistant', cleanText);
+    
+    if(!('speechSynthesis' in window)) return;
+
+    // Pause recognition while speaking so mic does not hear itself
+    isSpeaking = true;
+    coreState.textContent = 'speaking';
+    setStatus();
+    speechSynthesis.cancel();
+
+    const utter = new SpeechSynthesisUtterance(cleanText);
+    utter.rate = 1.05;
+    utter.pitch = 1.0;
+
+    utter.onend = () => {
+      isSpeaking = false;
+      coreState.textContent = 'listening';
+      setStatus();
+    };
+
+    utter.onerror = () => {
+      isSpeaking = false;
+      setStatus();
+    };
+
+    stopVoiceBtn.style.display = 'inline-block';
+    speechSynthesis.speak(utter);
   }
+
+  stopVoiceBtn.addEventListener('click', () => {
+    speechSynthesis.cancel();
+    isSpeaking = false;
+    stopVoiceBtn.style.display = 'none';
+    setStatus();
+  });
 
   function startMeter(){
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const source = audioCtx.createMediaStreamSource(micStream);
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 64;
-    source.connect(analyser);
-    const data = new Uint8Array(analyser.frequencyBinCount);
-    function tick(){
-      analyser.getByteFrequencyData(data);
-      let sum = 0;
-      meterBars.forEach((bar, i) => {
-        const v = data[i % data.length] || 0;
-        sum += v;
-        bar.style.height = Math.max(4, (v/255)*26) + 'px';
-      });
-      window.__signalMicLevel = (sum / meterBars.length) / 255;
-      meterRaf = requestAnimationFrame(tick);
+    try{
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioCtx.createMediaStreamSource(micStream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64;
+      source.connect(analyser);
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      function tick(){
+        analyser.getByteFrequencyData(data);
+        let sum = 0;
+        meterBars.forEach((bar, i) => {
+          const v = data[i % data.length] || 0;
+          sum += v;
+          bar.style.height = Math.max(4, (v/255)*24) + 'px';
+        });
+        window.__signalMicLevel = isSpeaking ? 0.3 : (sum / meterBars.length) / 255;
+        meterRaf = requestAnimationFrame(tick);
+      }
+      tick();
+    }catch(e){
+      console.warn("Audio meter couldn't start:", e);
     }
-    tick();
   }
 
   function stopMeter(){
@@ -326,46 +524,49 @@
 
   async function startMic(){
     if(!SpeechRecognition){
-      transcriptEl.textContent = "Your browser doesn't support speech recognition — try Chrome.";
+      transcriptEl.innerHTML = "<div class='system-hint'>Your browser doesn't support Speech Recognition. Use Google Chrome or Edge.</div>";
       return;
     }
     try{
       micStream = await navigator.mediaDevices.getUserMedia({ audio:true });
     }catch(e){
-      transcriptEl.textContent = 'Microphone permission was denied.';
+      transcriptEl.innerHTML = "<div class='system-hint'>Microphone permission was denied.</div>";
       return;
     }
     startMeter();
 
     recognition = new SpeechRecognition();
     recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.interimResults = false;
     recognition.lang = 'en-US';
 
     recognition.onresult = (e) => {
-      let interim = '', final = '';
-      for(let i = e.resultIndex; i < e.results.length; i++){
-        const t = e.results[i][0].transcript;
-        if(e.results[i].isFinal) final += t; else interim += t;
-      }
-      transcriptEl.innerHTML = (final ? '<span class="final">'+final+'</span> ' : '') + interim;
-      if(final.trim()){
-        logEvent('voice', 'voice', '"' + final.trim() + '"');
-        handleCommand(final.trim());
+      if(isSpeaking || isThinking) return; // Prevent self-triggering while speaking
+      const lastIndex = e.results.length - 1;
+      const said = e.results[lastIndex][0].transcript.trim();
+      if(said){
+        logEvent('voice', 'voice', `"${said}"`);
+        askGemini(said);
       }
     };
+
     recognition.onerror = (e) => {
       if(e.error === 'no-speech') return;
-      logEvent('voice', 'voice', 'error: ' + e.error);
+      logEvent('voice', 'voice', 'status: ' + e.error);
     };
-    recognition.onend = () => { if(micOn) recognition.start(); };
-    recognition.start();
 
+    recognition.onend = () => {
+      if(micOn) {
+        try { recognition.start(); } catch(e){}
+      }
+    };
+
+    recognition.start();
     micOn = true;
     micState.textContent = 'on';
     micBtn.textContent = 'Turn off mic';
     micBtn.classList.remove('primary');
-    transcriptEl.textContent = "Listening — try saying 'hello'.";
+    transcriptEl.innerHTML = "<div class='system-hint'>Listening — ask me anything...</div>";
     setStatus();
   }
 
@@ -377,13 +578,12 @@
     micState.textContent = 'off';
     micBtn.textContent = 'Turn on mic';
     micBtn.classList.add('primary');
-    transcriptEl.textContent = 'Mic is off. Turn it on and say something.';
     setStatus();
   }
 
   micBtn.addEventListener('click', () => micOn ? stopMic() : startMic());
 
-  /* ---------------- HAND TRACKING ---------------- */
+  /* ---------------- HAND TRACKING (MediaPipe) ---------------- */
   const camBtn = document.getElementById('camBtn');
   const handState = document.getElementById('handState');
   const video = document.getElementById('video');
@@ -398,14 +598,13 @@
   function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
 
   function classifyGesture(lm){
-    // finger "extended" = tip further from wrist than pip joint, with margin
     const wrist = lm[0];
     const fingers = [
-      { tip:4,  pip:2 },  // thumb (rough)
-      { tip:8,  pip:6 },  // index
-      { tip:12, pip:10 }, // middle
-      { tip:16, pip:14 }, // ring
-      { tip:20, pip:18 }  // pinky
+      { tip:4,  pip:2 },
+      { tip:8,  pip:6 },
+      { tip:12, pip:10 },
+      { tip:16, pip:14 },
+      { tip:20, pip:18 }
     ];
     const extended = fingers.map(f => dist(lm[f.tip], wrist) > dist(lm[f.pip], wrist) * 1.15);
     const [thumb, index, middle, ring, pinky] = extended;
@@ -439,7 +638,7 @@
         ctx.fillStyle = '#5EF2A6';
         lm.forEach(p => {
           ctx.beginPath();
-          ctx.arc(p.x*canvas.width, p.y*canvas.height, 3, 0, Math.PI*2);
+          ctx.arc(p.x*canvas.width, p.y*canvas.height, 3.5, 0, Math.PI*2);
           ctx.fill();
         });
         const g = classifyGesture(lm);
@@ -447,13 +646,22 @@
       });
 
       gestureBadge.style.display = 'block';
-      gestureBadge.textContent = gestures.length ? gestures.join('  ·  ') : 'reading…';
+      gestureBadge.textContent = gestures.length ? gestures.join('  ·  ') : 'tracking…';
 
       const now = Date.now();
       const gestureKey = gestures.join('+');
-      if(gestures.length && (gestureKey !== lastGesture || now - lastGestureAt > 1500)){
+      if(gestures.length && (gestureKey !== lastGesture || now - lastGestureAt > 2000)){
         logEvent('gesture', 'gesture', gestures.length > 1 ? gestures.join(' + ') : gestures[0]);
-        lastGesture = gestureKey; lastGestureAt = now;
+        
+        // Open palm stops speech synthesis
+        if(gestures.includes('Open palm') && isSpeaking){
+          speechSynthesis.cancel();
+          isSpeaking = false;
+          logEvent('assist', 'action', 'Speech stopped by open palm gesture');
+        }
+        
+        lastGesture = gestureKey; 
+        lastGestureAt = now;
       }
     } else {
       window.__signalHandLandmarks = null;
@@ -478,7 +686,7 @@
         delegate: 'CPU'
       },
       runningMode: 'VIDEO',
-      numHands: 2
+      numHands: 1
     });
     return handLandmarker;
   }
@@ -499,7 +707,7 @@
     try{
       landmarker = await ensureHandLandmarker();
     }catch(e){
-      camEmpty.textContent = 'Could not load the hand-tracking model — check your connection and reload.';
+      camEmpty.textContent = 'Could not load hand model. Check connection.';
       camEmpty.style.display = 'flex';
       return;
     }
@@ -519,11 +727,7 @@
           const handsArr = (result.landmarks && result.landmarks.length) ? result.landmarks : null;
           processLandmarks(handsArr);
         }catch(err){
-          logEvent('gesture', 'gesture', 'tracking error: ' + err.message);
-          cameraOn = false;
-          camEmpty.textContent = 'Hand tracking hit an error — try turning the camera off and on again.';
-          camEmpty.style.display = 'flex';
-          return;
+          console.warn('Tracking tick error:', err);
         }
       }
       rafId = requestAnimationFrame(loop);
@@ -548,15 +752,12 @@
 
   camBtn.addEventListener('click', () => cameraOn ? stopCamera() : startCamera());
 
-  setStatus();
-
-  /* ---------------- AI CORE (three.js, driven by hand tracking + voice) ---------------- */
+  /* ---------------- 3D AI CORE (THREE.JS) ---------------- */
   function initCore(){
     if(typeof THREE === 'undefined'){ setTimeout(initCore, 150); return; }
 
     const wrap = document.getElementById('coreWrap');
-    const coreState = document.getElementById('coreState');
-    const w = wrap.clientWidth, h = wrap.clientHeight;
+    const w = wrap.clientWidth || 800, h = wrap.clientHeight || 340;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 100);
@@ -565,11 +766,8 @@
     const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
     renderer.setSize(w, h);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    if(THREE.ACESFilmicToneMapping){ renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15; }
     wrap.appendChild(renderer.domElement);
 
-    // soft circular glow texture, built on a canvas — turns flat square
-    // points into soft glowing orbs instead of hard dots
     function makeGlowTexture(inner, outer){
       const size = 128;
       const c = document.createElement('canvas');
@@ -585,40 +783,16 @@
       tex.needsUpdate = true;
       return tex;
     }
-    const glowTex = makeGlowTexture('rgba(255,255,255,0.9)', 'rgba(255,255,255,0)');
-    const softTex = makeGlowTexture('rgba(255,255,255,0.55)', 'rgba(255,255,255,0)');
-
+    const glowTex = makeGlowTexture('rgba(255,255,255,0.95)', 'rgba(255,255,255,0)');
     const group = new THREE.Group();
     scene.add(group);
 
-    // distant starfield for depth (parallax backdrop, not part of the core group)
-    const STAR_COUNT = 500;
-    const starPos = new Float32Array(STAR_COUNT * 3);
-    for(let i=0;i<STAR_COUNT;i++){
-      const r = 4 + Math.random()*4;
-      const theta = Math.random()*Math.PI*2;
-      const phi = Math.acos((Math.random()*2)-1);
-      starPos[i*3]   = r*Math.sin(phi)*Math.cos(theta);
-      starPos[i*3+1] = r*Math.sin(phi)*Math.sin(theta);
-      starPos[i*3+2] = r*Math.cos(phi) - 2;
-    }
-    const starGeo = new THREE.BufferGeometry();
-    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-    const starMat = new THREE.PointsMaterial({
-      size:0.02, color:0xaab4c8, map:softTex, transparent:true, opacity:0.5,
-      blending: THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true
-    });
-    scene.add(new THREE.Points(starGeo, starMat));
-
-    // color palette for the nebula — pink / teal / amber / violet
     const palette = [
-      new THREE.Color(0xff6bd6), new THREE.Color(0x5EF2A6),
-      new THREE.Color(0xffb24a), new THREE.Color(0x8c7bff),
-      new THREE.Color(0x5ecbf2)
+      new THREE.Color(0x5EF2A6), new THREE.Color(0x8C7BFF),
+      new THREE.Color(0x5ECBF2), new THREE.Color(0xFF6BD6)
     ];
 
-    // dense nebula particle sphere — two layers, small tight + larger soft, for depth
-    function makeNebulaLayer(count, minR, maxR, size, opacity){
+    function makeNebula(count, minR, maxR, size, opacity){
       const pos = new Float32Array(count * 3);
       const col = new Float32Array(count * 3);
       for(let i=0;i<count;i++){
@@ -636,54 +810,31 @@
       geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
       const mat = new THREE.PointsMaterial({
         size, vertexColors:true, map:glowTex, transparent:true, opacity,
-        blending: THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true
+        blending: THREE.AdditiveBlending, depthWrite:false
       });
       return new THREE.Points(geo, mat);
     }
-    const nebulaCore = makeNebulaLayer(1400, 0.15, 0.75, 0.10, 0.95);
-    const nebulaHalo = makeNebulaLayer(1200, 0.6, 1.5, 0.055, 0.55);
+    const nebulaCore = makeNebula(1200, 0.15, 0.75, 0.11, 0.95);
+    const nebulaHalo = makeNebula(1000, 0.6, 1.4, 0.06, 0.55);
     group.add(nebulaCore, nebulaHalo);
 
-    // bright bloom-style core glow (large soft sprite, additive)
     const bloomSprite = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: glowTex, color:0xffffff, transparent:true, opacity:0.55,
-      blending: THREE.AdditiveBlending, depthWrite:false
+      map: glowTex, color:0x5EF2A6, transparent:true, opacity:0.6,
+      blending: THREE.AdditiveBlending
     }));
     bloomSprite.scale.set(1.8, 1.8, 1);
     group.add(bloomSprite);
 
-    // hot white-hot center point
-    const hotCore = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: glowTex, color:0xfff4e0, transparent:true, opacity:0.9,
-      blending: THREE.AdditiveBlending, depthWrite:false
-    }));
-    hotCore.scale.set(0.55, 0.55, 1);
-    group.add(hotCore);
-
-    // thin sci-fi HUD rings (no text, just geometry)
-    function makeRing(radius, tilt, color, opacity){
-      const ringGeo = new THREE.TorusGeometry(radius, 0.005, 8, 160);
-      const ringMat = new THREE.MeshBasicMaterial({ color, transparent:true, opacity, blending:THREE.AdditiveBlending });
+    function makeRing(radius, tilt, color){
+      const ringGeo = new THREE.TorusGeometry(radius, 0.006, 8, 140);
+      const ringMat = new THREE.MeshBasicMaterial({ color, transparent:true, opacity:0.35, blending:THREE.AdditiveBlending });
       const ring = new THREE.Mesh(ringGeo, ringMat);
       ring.rotation.x = tilt;
       group.add(ring);
       return ring;
     }
-    const ringA = makeRing(1.75, Math.PI/2.1, 0x5EF2A6, 0.4);
-    const ringB = makeRing(2.05, Math.PI/2.6, 0xff6bd6, 0.28);
-    const ringC = makeRing(2.3, Math.PI/1.8, 0x8c7bff, 0.16);
-
-    // orbiting crescent arcs, independent spin, additive glow
-    function makeArc(radius, tube, tilt, arcLen, color, opacity){
-      const arcGeo = new THREE.TorusGeometry(radius, tube, 8, 64, arcLen);
-      const arcMat = new THREE.MeshBasicMaterial({ color, transparent:true, opacity, blending:THREE.AdditiveBlending });
-      const arc = new THREE.Mesh(arcGeo, arcMat);
-      arc.rotation.x = tilt;
-      group.add(arc);
-      return arc;
-    }
-    const arc1 = makeArc(1.55, 0.018, Math.PI/3.4, Math.PI*0.75, 0xffffff, 0.9);
-    const arc2 = makeArc(1.9, 0.01, Math.PI/1.5, Math.PI*0.5, 0x5ecbf2, 0.5);
+    const ringA = makeRing(1.7, Math.PI/2.1, 0x5EF2A6);
+    const ringB = makeRing(2.1, Math.PI/2.6, 0x8C7BFF);
 
     function onResize(){
       const nw = wrap.clientWidth, nh = wrap.clientHeight;
@@ -695,9 +846,6 @@
     let targetRotX = 0, targetRotY = 0, curRotX = 0, curRotY = 0;
     let targetScale = 1, curScale = 1;
     let autoAngle = 0;
-    let hue = 0;
-
-    function dist3(a,b){ return Math.hypot(a.x-b.x, a.y-b.y, (a.z||0)-(b.z||0)); }
 
     function animate(){
       requestAnimationFrame(animate);
@@ -705,24 +853,26 @@
       const micLevel = window.__signalMicLevel || 0;
 
       if(lm){
-        coreState.textContent = 'tracking hand';
-        const wrist = lm[0];
-        targetRotY = (wrist.x - 0.5) * 3.2;
-        targetRotX = (wrist.y - 0.5) * -2.2;
-        const pinch = dist3(lm[4], lm[8]);
-        const norm = Math.min(1, Math.max(0, (pinch - 0.02) / 0.28));
-        targetScale = 0.4 + norm * 3.2;
+        targetRotY = (lm[0].x - 0.5) * 3.2;
+        targetRotX = (lm[0].y - 0.5) * -2.2;
+        const pinch = dist(lm[4], lm[8]);
+        targetScale = 0.5 + Math.min(2.5, Math.max(0.1, pinch * 5.0));
       } else {
-        coreState.textContent = micLevel > 0.06 ? 'listening' : 'idle';
-        autoAngle += 0.004;
-        targetRotY = Math.sin(autoAngle) * 0.6;
-        targetRotX = Math.cos(autoAngle*0.7) * 0.2;
-        targetScale = 1;
+        autoAngle += isThinking ? 0.02 : 0.005;
+        targetRotY = Math.sin(autoAngle) * 0.5;
+        targetRotX = Math.cos(autoAngle*0.8) * 0.2;
+        targetScale = isThinking ? 1.2 : 1;
       }
 
-      // voice makes it swell slightly and glow brighter
-      const micPulse = 1 + Math.min(micLevel * 1.2, 0.35);
+      if(isThinking){
+        bloomSprite.material.color.setHex(0x8C7BFF);
+      } else if(isSpeaking){
+        bloomSprite.material.color.setHex(0x5EF2A6);
+      } else {
+        bloomSprite.material.color.setHex(0x5EF2A6);
+      }
 
+      const micPulse = 1 + Math.min(micLevel * 1.5, 0.4);
       curRotX += (targetRotX - curRotX) * 0.08;
       curRotY += (targetRotY - curRotY) * 0.08;
       curScale += (targetScale*micPulse - curScale) * 0.1;
@@ -731,26 +881,10 @@
       group.rotation.y = curRotY;
       group.scale.setScalar(curScale);
 
-      nebulaCore.rotation.y -= 0.0018;
-      nebulaCore.rotation.x += 0.0008;
-      nebulaHalo.rotation.y -= 0.0009;
-      nebulaHalo.rotation.x -= 0.0005;
-
-      bloomSprite.material.opacity = 0.4 + micLevel * 0.5;
-      hotCore.material.opacity = 0.75 + micLevel * 0.25;
-      const hotScale = 0.5 + micLevel * 0.4;
-      hotCore.scale.set(hotScale, hotScale, 1);
-
-      ringA.rotation.z += 0.0025;
-      ringB.rotation.z -= 0.0018;
-      ringC.rotation.z += 0.0012;
-      arc1.rotation.z += 0.006;
-      arc2.rotation.z -= 0.004;
-
-      // slow color drift / shimmer across the nebula
-      hue += 0.0006;
-      nebulaCore.material.opacity = 0.85 + Math.sin(hue*6) * 0.1 + micLevel*0.15;
-      nebulaHalo.material.opacity = 0.45 + Math.sin(hue*5 + 1) * 0.1 + micLevel*0.1;
+      nebulaCore.rotation.y -= 0.002;
+      nebulaHalo.rotation.y += 0.001;
+      ringA.rotation.z += 0.003;
+      ringB.rotation.z -= 0.002;
 
       renderer.render(scene, camera);
     }
@@ -758,17 +892,7 @@
   }
   initCore();
 
-  /* ---------------- SCROLL REVEAL ---------------- */
-  const revealEls = document.querySelectorAll('.reveal');
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if(entry.isIntersecting){
-        entry.target.classList.add('in');
-        io.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-  revealEls.forEach(el => io.observe(el));
+  document.querySelectorAll('.reveal').forEach(el => el.classList.add('in'));
 })();
 </script>
 
