@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Signal — Multi-Brain AI Assistant</title>
+<title>Signal — Multi-Brain AI Assistant (Gemini 3.6 Flash)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" defer></script>
@@ -74,14 +74,14 @@
   .api-banner.connected{ border-color: rgba(94,242,166,0.3); background: linear-gradient(145deg, rgba(94,242,166,0.08), rgba(18,22,27,0.9)); }
   .api-banner .info h4{ margin:0 0 2px; font-size:13.5px; color:var(--ink); }
   .api-banner .info p{ margin:0; font-size:12px; color:var(--ink-soft); }
-  .api-input-wrap{ display: flex; gap: 8px; flex: 1; max-width: 580px; flex-wrap: wrap; }
+  .api-input-wrap{ display: flex; gap: 8px; flex: 1; max-width: 600px; flex-wrap: wrap; }
   .api-input-wrap input, .api-input-wrap select{
     background: #0B0E11; border: 1px solid var(--line);
     border-radius: 8px; padding: 8px 12px; color: var(--ink);
     font-family: inherit; font-size: 13px; outline: none;
   }
   .api-input-wrap input{ flex: 1; min-width: 180px; }
-  .api-input-wrap select{ min-width: 140px; cursor: pointer; }
+  .api-input-wrap select{ min-width: 160px; cursor: pointer; }
   .api-input-wrap input:focus, .api-input-wrap select:focus{ border-color: var(--brain-color); }
 
   /* Multi-Brain Matrix */
@@ -246,15 +246,17 @@
   <!-- API Key Setup Banner -->
   <div class="api-banner" id="apiBanner">
     <div class="info">
-      <h4 id="bannerTitle">Connect Google Gemini Brains</h4>
-      <p id="bannerDesc">Select your Gemini model & enter your Google AI Studio key (starts with AIzaSy).</p>
+      <h4 id="bannerTitle">Connect Google Gemini 3.6 Flash</h4>
+      <p id="bannerDesc">Configured for <b>Gemini 3.6 Flash</b>. Enter your Google AI Studio key below.</p>
     </div>
     <div class="api-input-wrap">
       <select id="modelSelect">
-        <option value="gemini-2.0-flash">⚡ Gemini 2.0 Flash (Recommended)</option>
-        <option value="gemini-1.5-flash">🚀 Gemini 1.5 Flash (Standard)</option>
-        <option value="gemini-2.5-flash">🔮 Gemini 2.5 Flash</option>
-        <option value="gemini-1.5-pro">🧠 Gemini 1.5 Pro</option>
+        <option value="gemini-3.6-flash" selected>⚡ Gemini 3.6 Flash (Primary)</option>
+        <option value="gemini-3.5-flash">🚀 Gemini 3.5 Flash</option>
+        <option value="gemini-3.0-flash">🔮 Gemini 3.0 Flash</option>
+        <option value="gemini-2.5-flash">✨ Gemini 2.5 Flash</option>
+        <option value="gemini-2.0-flash">⚡ Gemini 2.0 Flash</option>
+        <option value="gemini-1.5-flash">📦 Gemini 1.5 Flash</option>
       </select>
       <input type="password" id="apiKeyInput" placeholder="Paste Gemini Key (AIzaSy...)" autocomplete="off">
       <button class="primary" id="saveKeyBtn">Save & Test</button>
@@ -337,7 +339,7 @@
       color: '#5EF2A6',
       glow: 'rgba(94,242,166,0.35)',
       desc: 'All-around assistant for Q&A, reasoning, and quick daily tasks.',
-      prompt: 'You are Signal Core, a fast, intelligent, multi-purpose voice and chat assistant. Provide concise, direct, helpful answers (1 to 2 sentences max for voice, clear structure for text). Never use asterisks or markdown formatting if voice output is requested.',
+      prompt: 'You are Signal Core, a fast, intelligent, multi-purpose voice and chat assistant powered by Gemini 3.6 Flash. Provide concise, direct, helpful answers (1 to 2 sentences max for voice, clear structure for text). Never use asterisks or markdown formatting if voice output is requested.',
       prompts: ['What are 3 interesting science facts?', 'How does a quantum computer work?', 'Plan my daily routine for productivity']
     },
     coder: {
@@ -347,7 +349,7 @@
       color: '#5ECBF2',
       glow: 'rgba(94,203,242,0.35)',
       desc: 'Writes code, debugs, explains algorithms, and builds full scripts.',
-      prompt: 'You are Signal Architect, an expert software engineer and algorithm specialist. When writing code, provide clean, modern, well-commented snippets. Keep explanations concise, practical, and production-ready.',
+      prompt: 'You are Signal Architect, an expert software engineer and algorithm specialist powered by Gemini 3.6 Flash. When writing code, provide clean, modern, well-commented snippets. Keep explanations concise, practical, and production-ready.',
       prompts: ['Write a Python script to scrape a website', 'Explain WebSockets vs REST API', 'Create a JavaScript debounce function']
     },
     researcher: {
@@ -357,7 +359,7 @@
       color: '#FFB24A',
       glow: 'rgba(255,178,74,0.35)',
       desc: 'In-depth research, critical analysis, structured facts & breakdowns.',
-      prompt: 'You are Signal Scout, a deep analytical researcher. Break down complex topics with sharp logical clarity, comparing pros/cons and citing key principles clearly and objectively.',
+      prompt: 'You are Signal Scout, a deep analytical researcher powered by Gemini 3.6 Flash. Break down complex topics with sharp logical clarity, comparing pros/cons and citing key principles clearly and objectively.',
       prompts: ['Analyze the pros and cons of Nuclear Fusion', 'Break down how Transformer models work', 'What caused the fall of the Roman Empire?']
     },
     creative: {
@@ -367,7 +369,7 @@
       color: '#FF6BD6',
       glow: 'rgba(255,107,214,0.35)',
       desc: 'Creative storytelling, design ideas, marketing hooks, and brainstorming.',
-      prompt: 'You are Signal Muse, an imaginative creative thinker, storyteller, and designer. Craft vivid concepts, compelling copy, metaphors, and original ideas with punchy flair.',
+      prompt: 'You are Signal Muse, an imaginative creative thinker, storyteller, and designer powered by Gemini 3.6 Flash. Craft vivid concepts, compelling copy, metaphors, and original ideas with punchy flair.',
       prompts: ['Write a sci-fi opening paragraph about Mars', 'Brainstorm 5 catchy names for an AI startup', 'Create a cyberpunk character backstory']
     },
     commander: {
@@ -377,7 +379,7 @@
       color: '#8C7BFF',
       glow: 'rgba(140,123,255,0.35)',
       desc: 'Action planner, system utilities, task execution, and calculations.',
-      prompt: 'You are Signal Commander, an executive decision maker and execution strategist. Give step-by-step action plans, checklist items, and direct answers with zero fluff.',
+      prompt: 'You are Signal Commander, an executive decision maker and execution strategist powered by Gemini 3.6 Flash. Give step-by-step action plans, checklist items, and direct answers with zero fluff.',
       prompts: ['Give me a 5-step checklist to launch a product', 'Calculate monthly savings on $5000 income', 'Create a 30-day fitness roadmap']
     }
   };
@@ -462,7 +464,7 @@
 
   let cameraOn = false, micOn = false, isThinking = false, isSpeaking = false;
   let GEMINI_KEY = (localStorage.getItem('signal_gemini_key') || '').trim().replace(/^["']|["']$/g, '');
-  let GEMINI_MODEL = localStorage.getItem('signal_gemini_model') || 'gemini-2.0-flash';
+  let GEMINI_MODEL = localStorage.getItem('signal_gemini_model') || 'gemini-3.6-flash';
 
   modelSelect.value = GEMINI_MODEL;
   modelSelect.addEventListener('change', () => {
@@ -474,16 +476,16 @@
   function updateKeyUI(){
     if(GEMINI_KEY){
       apiBanner.classList.add('connected');
-      bannerTitle.textContent = "Multi-Brain Connected ⚡";
-      bannerDesc.textContent = `Active model: ${GEMINI_MODEL}. Ready for intelligent responses.`;
+      bannerTitle.textContent = "Gemini 3.6 Flash Connected ⚡";
+      bannerDesc.textContent = `Active model: ${GEMINI_MODEL}. All neural brains online.`;
       apiKeyInput.value = GEMINI_KEY;
       clearKeyBtn.style.display = 'inline-block';
       keyBtn.classList.add('has-key');
       keyBtnLabel.textContent = 'Key Active';
     } else {
       apiBanner.classList.remove('connected');
-      bannerTitle.textContent = "Connect Google Gemini Multi-Brain";
-      bannerDesc.textContent = "Select your Gemini model & enter your Google AI Studio key (starts with AIzaSy).";
+      bannerTitle.textContent = "Connect Google Gemini 3.6 Flash";
+      bannerDesc.textContent = "Configured for Gemini 3.6 Flash. Enter your Google AI Studio key (starts with AIzaSy).";
       apiKeyInput.value = '';
       clearKeyBtn.style.display = 'none';
       keyBtn.classList.remove('has-key');
@@ -503,7 +505,7 @@
     saveKeyBtn.disabled = true;
 
     try {
-      const selectedModel = modelSelect.value || 'gemini-2.0-flash';
+      const selectedModel = modelSelect.value || 'gemini-3.6-flash';
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${encodeURIComponent(clean)}`;
       
       const res = await fetch(url, {
@@ -528,7 +530,7 @@
     } catch(err) {
       console.error("Key verification failed:", err);
       logEvent('error', 'error', err.message);
-      appendErrorNotice(`Verification failed (${err.message}). If using a specific model, make sure it is enabled in your Google AI Studio account.`);
+      appendErrorNotice(`Verification failed (${err.message}). Check your Google AI Studio key or model availability.`);
     } finally {
       saveKeyBtn.textContent = "Save & Test";
       saveKeyBtn.disabled = false;
@@ -628,8 +630,9 @@
 
   async function callGemini(contentsPayload, systemPrompt){
     const cleanKey = encodeURIComponent(GEMINI_KEY.trim());
-    const chosenModel = modelSelect.value || 'gemini-2.0-flash';
-    const candidateModels = [chosenModel, 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+    const chosenModel = modelSelect.value || 'gemini-3.6-flash';
+    
+    const candidateModels = [chosenModel, 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.0-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
     const uniqueModels = [...new Set(candidateModels)];
 
     let lastError = null;
