@@ -14,7 +14,7 @@
     --bg:#0B0E11; --panel:#12161B; --line:#212830; --grid: rgba(255,255,255,0.035);
     --ink:#EAEFF3; --ink-soft:#8A96A3;
     
-    /* Active Brain Theme (Dynamic CSS variables) */
+    /* Dynamic Brain CSS variables */
     --brain-color: #5EF2A6;
     --brain-glow: rgba(94,242,166,0.35);
     --warn:#FF6B4A;
@@ -74,15 +74,17 @@
   .api-banner.connected{ border-color: rgba(94,242,166,0.3); background: linear-gradient(145deg, rgba(94,242,166,0.08), rgba(18,22,27,0.9)); }
   .api-banner .info h4{ margin:0 0 2px; font-size:13.5px; color:var(--ink); }
   .api-banner .info p{ margin:0; font-size:12px; color:var(--ink-soft); }
-  .api-input-wrap{ display: flex; gap: 8px; flex: 1; max-width: 440px; }
-  .api-input-wrap input{
-    flex: 1; background: #0B0E11; border: 1px solid var(--line);
+  .api-input-wrap{ display: flex; gap: 8px; flex: 1; max-width: 580px; flex-wrap: wrap; }
+  .api-input-wrap input, .api-input-wrap select{
+    background: #0B0E11; border: 1px solid var(--line);
     border-radius: 8px; padding: 8px 12px; color: var(--ink);
     font-family: inherit; font-size: 13px; outline: none;
   }
-  .api-input-wrap input:focus{ border-color: var(--brain-color); }
+  .api-input-wrap input{ flex: 1; min-width: 180px; }
+  .api-input-wrap select{ min-width: 140px; cursor: pointer; }
+  .api-input-wrap input:focus, .api-input-wrap select:focus{ border-color: var(--brain-color); }
 
-  /* Multi-Brain Matrix Selector */
+  /* Multi-Brain Matrix */
   .brain-matrix{
     background: var(--panel); border: 1px solid var(--line);
     border-radius: 14px; padding: 16px; margin-bottom: 20px;
@@ -175,6 +177,7 @@
   .transcript .msg{ margin-bottom: 10px; }
   .transcript .user{ color:var(--ink); font-weight: 500; }
   .transcript .assistant{ color:var(--brain-color); }
+  .transcript .error-msg{ color:var(--warn); background:rgba(255,107,74,0.1); border:1px solid rgba(255,107,74,0.3); padding:8px 12px; border-radius:8px; font-size:13px; margin:8px 0; }
   .transcript .system-hint{ font-style: italic; color:#687684; font-size: 13px; }
   .transcript pre{
     background:#06080a; border:1px solid var(--line); border-radius:6px;
@@ -225,6 +228,7 @@
   .tag.text{ background:rgba(140,160,255,0.15); color:#b4c2ff; }
   .tag.brain{ background:rgba(255,178,74,0.15); color:#FFB24A; }
   .tag.assist{ background:rgba(140,160,255,0.15); color:#b4c2ff; }
+  .tag.error{ background:rgba(255,107,74,0.2); color:var(--warn); }
   .log-empty{ color:var(--ink-soft); font-size:13px; }
 </style>
 </head>
@@ -242,12 +246,18 @@
   <!-- API Key Setup Banner -->
   <div class="api-banner" id="apiBanner">
     <div class="info">
-      <h4 id="bannerTitle">Connect Google Gemini Multi-Brain</h4>
-      <p id="bannerDesc">Enter your Google AI Studio API Key to empower all specialized neural brains.</p>
+      <h4 id="bannerTitle">Connect Google Gemini Brains</h4>
+      <p id="bannerDesc">Select your Gemini model & enter your Google AI Studio key (starts with AIzaSy).</p>
     </div>
     <div class="api-input-wrap">
+      <select id="modelSelect">
+        <option value="gemini-2.0-flash">⚡ Gemini 2.0 Flash (Recommended)</option>
+        <option value="gemini-1.5-flash">🚀 Gemini 1.5 Flash (Standard)</option>
+        <option value="gemini-2.5-flash">🔮 Gemini 2.5 Flash</option>
+        <option value="gemini-1.5-pro">🧠 Gemini 1.5 Pro</option>
+      </select>
       <input type="password" id="apiKeyInput" placeholder="Paste Gemini Key (AIzaSy...)" autocomplete="off">
-      <button class="primary" id="saveKeyBtn">Save</button>
+      <button class="primary" id="saveKeyBtn">Save & Test</button>
       <button id="clearKeyBtn" style="display:none;" class="warn">Remove</button>
     </div>
   </div>
@@ -434,12 +444,13 @@
   renderBrainGrid();
   renderQuickPrompts();
 
-  /* ---------------- API KEY & SETTINGS ---------------- */
+  /* ---------------- API KEY & MODEL SETTINGS ---------------- */
   const statusLine = document.getElementById('statusLine');
   const liveDot = document.getElementById('liveDot');
   const logEl = document.getElementById('log');
   const coreState = document.getElementById('coreState');
   const apiKeyInput = document.getElementById('apiKeyInput');
+  const modelSelect = document.getElementById('modelSelect');
   const saveKeyBtn = document.getElementById('saveKeyBtn');
   const clearKeyBtn = document.getElementById('clearKeyBtn');
   const apiBanner = document.getElementById('apiBanner');
@@ -450,21 +461,29 @@
   const ttsToggle = document.getElementById('ttsToggle');
 
   let cameraOn = false, micOn = false, isThinking = false, isSpeaking = false;
-  let GEMINI_KEY = localStorage.getItem('signal_gemini_key') || '';
+  let GEMINI_KEY = (localStorage.getItem('signal_gemini_key') || '').trim().replace(/^["']|["']$/g, '');
+  let GEMINI_MODEL = localStorage.getItem('signal_gemini_model') || 'gemini-2.0-flash';
+
+  modelSelect.value = GEMINI_MODEL;
+  modelSelect.addEventListener('change', () => {
+    GEMINI_MODEL = modelSelect.value;
+    localStorage.setItem('signal_gemini_model', GEMINI_MODEL);
+    logEvent('assist', 'model', `Active model set to: ${GEMINI_MODEL}`);
+  });
 
   function updateKeyUI(){
     if(GEMINI_KEY){
       apiBanner.classList.add('connected');
       bannerTitle.textContent = "Multi-Brain Connected ⚡";
-      bannerDesc.textContent = "All neural brains active and ready via Gemini Flash.";
+      bannerDesc.textContent = `Active model: ${GEMINI_MODEL}. Ready for intelligent responses.`;
       apiKeyInput.value = GEMINI_KEY;
       clearKeyBtn.style.display = 'inline-block';
       keyBtn.classList.add('has-key');
       keyBtnLabel.textContent = 'Key Active';
     } else {
       apiBanner.classList.remove('connected');
-      bannerTitle.textContent = "Connect Google Gemini Brain";
-      bannerDesc.textContent = "Enter your Google AI Studio API Key (AIzaSy...) to enable AI responses.";
+      bannerTitle.textContent = "Connect Google Gemini Multi-Brain";
+      bannerDesc.textContent = "Select your Gemini model & enter your Google AI Studio key (starts with AIzaSy).";
       apiKeyInput.value = '';
       clearKeyBtn.style.display = 'none';
       keyBtn.classList.remove('has-key');
@@ -473,15 +492,51 @@
   }
   updateKeyUI();
 
-  saveKeyBtn.addEventListener('click', () => {
-    const val = apiKeyInput.value.trim();
-    if(val){
-      GEMINI_KEY = val;
-      localStorage.setItem('signal_gemini_key', val);
-      updateKeyUI();
-      logEvent('assist', 'system', 'Gemini API key saved.');
-      respond("All neural brains online and connected.");
+  async function testAndSaveKey(keyVal){
+    const clean = keyVal.trim().replace(/^["']|["']$/g, '');
+    if(!clean){
+      alert("Please enter an API Key.");
+      return;
     }
+
+    saveKeyBtn.textContent = "Testing Key…";
+    saveKeyBtn.disabled = true;
+
+    try {
+      const selectedModel = modelSelect.value || 'gemini-2.0-flash';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${encodeURIComponent(clean)}`;
+      
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: 'hi' }] }]
+        })
+      });
+
+      if(!res.ok){
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error?.message || `HTTP ${res.status}: ${res.statusText}`);
+      }
+
+      GEMINI_KEY = clean;
+      localStorage.setItem('signal_gemini_key', clean);
+      localStorage.setItem('signal_gemini_model', selectedModel);
+      updateKeyUI();
+      logEvent('assist', 'system', `Gemini API key verified with ${selectedModel}!`);
+      respond(`Gemini ${selectedModel} connected and verified successfully!`);
+    } catch(err) {
+      console.error("Key verification failed:", err);
+      logEvent('error', 'error', err.message);
+      appendErrorNotice(`Verification failed (${err.message}). If using a specific model, make sure it is enabled in your Google AI Studio account.`);
+    } finally {
+      saveKeyBtn.textContent = "Save & Test";
+      saveKeyBtn.disabled = false;
+    }
+  }
+
+  saveKeyBtn.addEventListener('click', () => {
+    testAndSaveKey(apiKeyInput.value);
   });
 
   clearKeyBtn.addEventListener('click', () => {
@@ -525,6 +580,14 @@
   /* ---------------- CONVERSATION & GEMINI AI ---------------- */
   const chatMessages = [];
 
+  function appendErrorNotice(msg){
+    const div = document.createElement('div');
+    div.className = 'error-msg';
+    div.innerHTML = `⚠️ <b>Error:</b> ${msg}`;
+    transcriptEl.appendChild(div);
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+
   function checkForBrainSwitchCommand(text){
     const lower = text.toLowerCase();
     if(lower.includes('switch to coder') || lower.includes('coding brain') || lower.includes('developer brain')){
@@ -541,37 +604,75 @@
     return false;
   }
 
-  async function callGeminiEndpoint(modelName, apiKey, promptHistory, systemPrompt){
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-    const payload = {
-      contents: promptHistory,
-      systemInstruction: {
-        parts: [{ text: systemPrompt }]
-      },
-      generationConfig: {
-        maxOutputTokens: 250,
-        temperature: activeBrain.id === 'creative' ? 0.9 : 0.6
+  function buildSanitizedContents(history, currentPrompt){
+    const contents = [];
+    const fullList = [...history, { role: 'user', parts: [{ text: currentPrompt }] }];
+
+    for (let i = 0; i < fullList.length; i++) {
+      const item = fullList[i];
+      if (!item.parts || !item.parts[0] || !item.parts[0].text) continue;
+      
+      const role = item.role === 'model' ? 'model' : 'user';
+      if (contents.length > 0 && contents[contents.length - 1].role === role) {
+        contents[contents.length - 1].parts[0].text += "\n" + item.parts[0].text;
+      } else {
+        contents.push({ role, parts: [{ text: item.parts[0].text }] });
       }
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if(!response.ok){
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error?.message || `HTTP ${response.status}`);
     }
-    return response.json();
+
+    while (contents.length > 0 && contents[0].role !== 'user') {
+      contents.shift();
+    }
+    return contents;
+  }
+
+  async function callGemini(contentsPayload, systemPrompt){
+    const cleanKey = encodeURIComponent(GEMINI_KEY.trim());
+    const chosenModel = modelSelect.value || 'gemini-2.0-flash';
+    const candidateModels = [chosenModel, 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+    const uniqueModels = [...new Set(candidateModels)];
+
+    let lastError = null;
+
+    for(const m of uniqueModels){
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${cleanKey}`;
+      try {
+        const body = {
+          contents: contentsPayload,
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: {
+            maxOutputTokens: 300,
+            temperature: activeBrain.id === 'creative' ? 0.9 : 0.6
+          }
+        };
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        if(!res.ok){
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error?.message || `HTTP ${res.status}: ${res.statusText}`);
+        }
+
+        return await res.json();
+      } catch(e) {
+        lastError = e;
+        console.warn(`Model ${m} failed:`, e);
+      }
+    }
+    throw lastError;
   }
 
   async function askGemini(userQuery, isFromVoice = false){
     if(checkForBrainSwitchCommand(userQuery)) return;
 
     if(!GEMINI_KEY){
-      respond("Please paste your Gemini API key in the top settings banner to enable AI answers.");
+      appendTranscript('user', userQuery);
+      appendErrorNotice("No API Key detected! Paste your Gemini API key in the top banner and click 'Save & Test'.");
+      respond("Please paste your Gemini API key in the top banner to enable my brain.");
       return;
     }
 
@@ -582,18 +683,13 @@
     setStatus();
     appendTranscript('user', userQuery);
 
-    chatMessages.push({ role: 'user', parts: [{ text: userQuery }] });
+    const contentsPayload = buildSanitizedContents(chatMessages, userQuery);
 
     try {
-      let data;
-      try {
-        data = await callGeminiEndpoint('gemini-1.5-flash', GEMINI_KEY, chatMessages, activeBrain.prompt);
-      } catch(e1) {
-        console.warn('Gemini 1.5 Flash error, trying 2.0-flash:', e1);
-        data = await callGeminiEndpoint('gemini-2.0-flash', GEMINI_KEY, chatMessages, activeBrain.prompt);
-      }
+      const data = await callGemini(contentsPayload, activeBrain.prompt);
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I processed that, but got an empty response.";
 
-      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I understood, but had no reply.";
+      chatMessages.push({ role: 'user', parts: [{ text: userQuery }] });
       chatMessages.push({ role: 'model', parts: [{ text: reply }] });
 
       if(chatMessages.length > 10){
@@ -605,15 +701,19 @@
     } catch(err) {
       console.error('Gemini API Error:', err);
       isThinking = false;
-      logEvent('voice', 'error', err.message);
-      
-      let errorMsg = "Sorry, I had trouble reaching the AI server.";
+      logEvent('error', 'error', err.message);
+
+      let hint = err.message;
       if(err.message.includes('API key not valid') || err.message.includes('API_KEY_INVALID')){
-        errorMsg = "Your Gemini API key is invalid. Please check and re-paste it.";
-      } else if(err.message.includes('Resource has been exhausted')){
-        errorMsg = "Gemini API quota is full. Please try again in a moment.";
+        hint = "Your Gemini API Key is invalid. Get a free key at Google AI Studio (aistudio.google.com).";
+      } else if(err.message.includes('Failed to fetch') || err.name === 'TypeError'){
+        hint = "Browser connection blocked. Check your internet, adblocker (Brave Shields/uBlock), or VPN.";
+      } else if(err.message.includes('RESOURCE_EXHAUSTED')){
+        hint = "API rate limit reached. Please wait a moment and try again.";
       }
-      respond(errorMsg);
+
+      appendErrorNotice(hint);
+      respond("I ran into an issue reaching Google AI. Check the error message in the chat.");
     }
   }
 
