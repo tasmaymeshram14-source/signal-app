@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Signal — AI Voice, Text & Gesture Assistant</title>
+<title>Signal — Multi-Brain AI Assistant</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" defer></script>
@@ -13,40 +13,42 @@
   :root{
     --bg:#0B0E11; --panel:#12161B; --line:#212830; --grid: rgba(255,255,255,0.035);
     --ink:#EAEFF3; --ink-soft:#8A96A3;
-    --sig:#5EF2A6;
-    --sig-glow: rgba(94,242,166,0.35);
+    
+    /* Active Brain Theme (Dynamic CSS variables) */
+    --brain-color: #5EF2A6;
+    --brain-glow: rgba(94,242,166,0.35);
     --warn:#FF6B4A;
-    --ai:#8C7BFF;
   }
   *{ box-sizing:border-box; }
   body{
     margin:0; color:var(--ink);
     font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
     background:
-      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(94,242,166,0.10), transparent),
+      radial-gradient(ellipse 900px 500px at 15% -10%, var(--brain-glow), transparent),
       radial-gradient(ellipse 700px 500px at 100% 10%, rgba(140,160,255,0.07), transparent),
       linear-gradient(var(--grid) 1px, transparent 1px) 0 0/48px 48px,
       linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/48px 48px,
       var(--bg);
     background-attachment: fixed;
+    transition: background 0.5s ease;
   }
   .mono{ font-family:'JetBrains Mono',monospace; }
-  ::selection{ background:var(--sig); color:#04120b; }
+  ::selection{ background:var(--brain-color); color:#04120b; }
 
   header{
     display:flex; align-items:center; justify-content:space-between;
-    padding:18px 24px; border-bottom:1px solid var(--line);
-    backdrop-filter: blur(6px); position: sticky; top:0; z-index: 100;
+    padding:16px 24px; border-bottom:1px solid var(--line);
+    backdrop-filter: blur(8px); position: sticky; top:0; z-index: 100;
     background: rgba(11, 14, 17, 0.85);
   }
   .brand{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:19px; letter-spacing:-0.02em; }
-  .dot{ width:9px; height:9px; border-radius:50%; background:var(--ink-soft); flex:none; }
-  .dot.live{ background:var(--sig); box-shadow:0 0 0 0 rgba(94,242,166,0.6); animation:ring 1.6s infinite; }
-  .dot.thinking{ background:var(--ai); box-shadow:0 0 0 0 rgba(140,123,255,0.6); animation:ring 1s infinite; }
+  .dot{ width:9px; height:9px; border-radius:50%; background:var(--ink-soft); flex:none; transition:background .3s ease; }
+  .dot.live{ background:var(--brain-color); box-shadow:0 0 0 0 var(--brain-glow); animation:ring 1.6s infinite; }
+  .dot.thinking{ background:#8C7BFF; box-shadow:0 0 0 0 rgba(140,123,255,0.6); animation:ring 1s infinite; }
   @keyframes ring{
-    0%{ box-shadow:0 0 0 0 rgba(94,242,166,0.45); }
-    70%{ box-shadow:0 0 0 8px rgba(94,242,166,0); }
-    100%{ box-shadow:0 0 0 0 rgba(94,242,166,0); }
+    0%{ box-shadow:0 0 0 0 var(--brain-glow); }
+    70%{ box-shadow:0 0 0 8px rgba(0,0,0,0); }
+    100%{ box-shadow:0 0 0 0 rgba(0,0,0,0); }
   }
   .header-actions{ display:flex; align-items:center; gap:14px; }
   header .status{ font-size:12px; color:var(--ink-soft); }
@@ -56,54 +58,72 @@
     background:rgba(255,255,255,0.06); border:1px solid var(--line);
     color:var(--ink); cursor:pointer; display:flex; align-items:center; gap:6px;
   }
-  .key-btn.has-key{ border-color:rgba(94,242,166,0.4); color:var(--sig); background:rgba(94,242,166,0.08); }
-  .key-btn:hover{ border-color:var(--sig); }
+  .key-btn.has-key{ border-color:rgba(94,242,166,0.4); color:var(--brain-color); background:rgba(94,242,166,0.08); }
+  .key-btn:hover{ border-color:var(--brain-color); }
 
-  main{ max-width:1080px; margin:0 auto; padding:28px 20px 60px; }
-  .eyebrow{
-    display:inline-flex; align-items:center; gap:8px;
-    font-size:12px; color: var(--sig); border:1px solid rgba(94,242,166,0.3);
-    background: rgba(94,242,166,0.06); padding:6px 12px; border-radius:100px;
-    margin-bottom:18px;
-  }
-  .lead{ max-width:64ch; margin-bottom:24px; }
-  .lead h1{ font-size:clamp(28px,5vw,40px); margin:0 0 12px; letter-spacing:-0.03em; line-height:1.1; }
-  .lead p{ color:var(--ink-soft); font-size:15px; line-height:1.6; margin:0; }
+  main{ max-width:1100px; margin:0 auto; padding:24px 20px 60px; }
 
   /* API Key Banner */
   .api-banner{
     background: linear-gradient(145deg, rgba(140,123,255,0.12), rgba(18,22,27,0.9));
     border: 1px solid rgba(140,123,255,0.35);
-    border-radius: 12px; padding: 16px 20px;
-    margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;
+    border-radius: 12px; padding: 14px 18px;
+    margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;
     gap: 16px; flex-wrap: wrap;
   }
   .api-banner.connected{ border-color: rgba(94,242,166,0.3); background: linear-gradient(145deg, rgba(94,242,166,0.08), rgba(18,22,27,0.9)); }
-  .api-banner .info h4{ margin:0 0 4px; font-size:14px; color:var(--ink); }
-  .api-banner .info p{ margin:0; font-size:12.5px; color:var(--ink-soft); }
+  .api-banner .info h4{ margin:0 0 2px; font-size:13.5px; color:var(--ink); }
+  .api-banner .info p{ margin:0; font-size:12px; color:var(--ink-soft); }
   .api-input-wrap{ display: flex; gap: 8px; flex: 1; max-width: 440px; }
   .api-input-wrap input{
     flex: 1; background: #0B0E11; border: 1px solid var(--line);
     border-radius: 8px; padding: 8px 12px; color: var(--ink);
     font-family: inherit; font-size: 13px; outline: none;
   }
-  .api-input-wrap input:focus{ border-color: var(--sig); }
+  .api-input-wrap input:focus{ border-color: var(--brain-color); }
 
-  .features{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:34px; }
-  @media (max-width:860px){ .features{ grid-template-columns:1fr; } }
-  .feature{
-    border:1px solid var(--line); border-radius:12px; padding:16px;
-    background: linear-gradient(160deg, rgba(255,255,255,0.02), transparent);
+  /* Multi-Brain Matrix Selector */
+  .brain-matrix{
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 16px; margin-bottom: 20px;
   }
-  .feature .icon{
-    width:30px; height:30px; border-radius:8px; margin-bottom:10px;
-    display:flex; align-items:center; justify-content:center;
-    background: rgba(94,242,166,0.1); color:var(--sig);
+  .brain-matrix-header{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;
   }
-  .feature h3{ font-size:14px; margin:0 0 6px; }
-  .feature p{ font-size:13px; color:var(--ink-soft); margin:0; line-height:1.5; }
+  .brain-matrix-header h3{ margin:0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .brain-grid{
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;
+  }
+  .brain-card{
+    background: rgba(255,255,255,0.02); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 14px; cursor: pointer;
+    transition: all 0.2s ease; display: flex; flex-direction: column; gap: 4px;
+    position: relative; overflow: hidden;
+  }
+  .brain-card:hover{ border-color: rgba(255,255,255,0.2); transform: translateY(-2px); }
+  .brain-card.active{
+    background: rgba(255,255,255,0.05);
+    border-color: var(--brain-color);
+    box-shadow: 0 0 16px var(--brain-glow);
+  }
+  .brain-card .title{ font-size: 13.5px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--ink); }
+  .brain-card .desc{ font-size: 11.5px; color: var(--ink-soft); line-height: 1.4; }
+  .brain-card .badge{
+    position: absolute; top: 8px; right: 8px; font-size: 9px; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px; font-weight: 700; opacity: 0; transition: opacity .2s ease;
+  }
+  .brain-card.active .badge{ opacity: 1; background: var(--brain-color); color: #04120b; }
 
-  .grid{ display:grid; grid-template-columns: 1.1fr 1fr; gap:18px; margin-bottom:18px; }
+  /* Quick Prompts */
+  .quick-prompts{ display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:18px; }
+  .quick-chip{
+    font-size:12px; background:#12161B; border:1px solid var(--line);
+    padding:6px 12px; border-radius:100px; color:var(--ink-soft); cursor:pointer;
+    white-space:nowrap; transition:all .15s ease;
+  }
+  .quick-chip:hover{ border-color:var(--brain-color); color:var(--ink); }
+
+  .grid{ display:grid; grid-template-columns: 1.15fr 1fr; gap:18px; margin-bottom:18px; }
   @media (max-width:860px){ .grid{ grid-template-columns:1fr; } }
 
   .card{
@@ -116,8 +136,9 @@
   .core-card{ grid-column: 1 / -1; }
   .core-wrap{
     position:relative; border-radius:10px; overflow:hidden;
-    background: radial-gradient(ellipse at center, rgba(94,242,166,0.06), #06090b 70%);
-    aspect-ratio: 21/9;
+    background: radial-gradient(ellipse at center, var(--brain-glow), #06090b 70%);
+    aspect-ratio: 21/8;
+    transition: background 0.5s ease;
   }
   @media (max-width:640px){ .core-wrap{ aspect-ratio:4/3; } }
   .core-wrap canvas{ position:absolute; inset:0; width:100%; height:100%; }
@@ -127,7 +148,7 @@
     padding:6px 12px; border-radius:8px; backdrop-filter: blur(4px);
     border: 1px solid rgba(255,255,255,0.08);
   }
-  .core-hint b{ color:var(--sig); }
+  .core-hint b{ color:var(--brain-color); }
 
   /* camera panel */
   .cam-wrap{ position:relative; border-radius:10px; overflow:hidden; background:#000; aspect-ratio:4/3; }
@@ -136,8 +157,8 @@
   canvas{ transform:scaleX(-1); }
   .gesture-badge{
     position:absolute; left:12px; bottom:12px; z-index:3;
-    background:rgba(0,0,0,0.65); border:1px solid rgba(94,242,166,0.4);
-    color:var(--sig); padding:6px 12px; border-radius:100px; font-size:13px; font-weight:700;
+    background:rgba(0,0,0,0.65); border:1px solid var(--brain-color);
+    color:var(--brain-color); padding:6px 12px; border-radius:100px; font-size:13px; font-weight:700;
     backdrop-filter: blur(4px);
   }
   .cam-empty{
@@ -145,60 +166,64 @@
     color:var(--ink-soft); font-size:13px; text-align:center; padding:20px; z-index:2;
   }
 
-  /* mic & chat panel */
+  /* conversation & mic panel */
   .transcript{
-    min-height:160px; max-height:240px; overflow-y:auto;
+    min-height:180px; max-height:260px; overflow-y:auto;
     background:#0d1116; border:1px solid var(--line); border-radius:10px;
     padding:14px; font-size:14px; color:var(--ink-soft); line-height:1.6; margin-bottom:12px;
   }
-  .transcript .msg{ margin-bottom: 8px; }
+  .transcript .msg{ margin-bottom: 10px; }
   .transcript .user{ color:var(--ink); font-weight: 500; }
-  .transcript .assistant{ color:var(--sig); }
+  .transcript .assistant{ color:var(--brain-color); }
   .transcript .system-hint{ font-style: italic; color:#687684; font-size: 13px; }
+  .transcript pre{
+    background:#06080a; border:1px solid var(--line); border-radius:6px;
+    padding:10px; overflow-x:auto; font-family:'JetBrains Mono',monospace;
+    font-size:12.5px; color:#EAEFF3; margin:6px 0;
+  }
   
   .mic-meter{ display:flex; gap:4px; align-items:flex-end; height:24px; margin-bottom:14px; }
-  .mic-meter span{ width:5px; background:var(--sig); border-radius:2px; height:4px; transition:height .08s ease; opacity:.85; }
+  .mic-meter span{ width:5px; background:var(--brain-color); border-radius:2px; height:4px; transition:height .08s ease, background .3s ease; opacity:.85; }
 
   /* Text input bar */
-  .chat-input-bar{
-    display:flex; gap:8px; margin-bottom:12px;
-  }
+  .chat-input-bar{ display:flex; gap:8px; margin-bottom:12px; }
   .chat-input-bar input{
     flex:1; background:#0d1116; border:1px solid var(--line);
     border-radius:9px; padding:10px 14px; color:var(--ink);
     font-family:inherit; font-size:13.5px; outline:none; transition:border-color .15s ease;
   }
-  .chat-input-bar input:focus{ border-color:var(--sig); }
+  .chat-input-bar input:focus{ border-color:var(--brain-color); }
 
   .btn-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
   button{
     font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer;
     border-radius:9px; padding:10px 16px; border:1px solid var(--line);
-    background:#171d24; color:var(--ink); transition:background .15s ease, border-color .15s ease;
+    background:#171d24; color:var(--ink); transition:all .15s ease;
   }
   button:hover{ border-color:#33404d; }
-  button.primary{ background:var(--sig); color:#04120b; border-color:var(--sig); }
-  button.primary:hover{ background:#7bf5b8; }
+  button.primary{ background:var(--brain-color); color:#04120b; border-color:var(--brain-color); }
+  button.primary:hover{ filter: brightness(1.15); }
   button.warn{ background:rgba(255,107,74,0.15); color:var(--warn); border-color:rgba(255,107,74,0.4); }
   button.warn:hover{ background:rgba(255,107,74,0.25); }
   button:disabled{ opacity:0.45; cursor:default; }
-  button:focus-visible{ outline:2px solid var(--sig); outline-offset:2px; }
+  button:focus-visible{ outline:2px solid var(--brain-color); outline-offset:2px; }
 
   .toggle-label{
     display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft);
     cursor:pointer; user-select:none; margin-left:auto;
   }
-  .toggle-label input{ cursor:pointer; accent-color:var(--sig); }
+  .toggle-label input{ cursor:pointer; accent-color:var(--brain-color); }
 
   /* log */
   .log-card{ grid-column: 1 / -1; }
-  .log{ max-height:200px; overflow-y:auto; display:flex; flex-direction:column-reverse; gap:8px; }
+  .log{ max-height:180px; overflow-y:auto; display:flex; flex-direction:column-reverse; gap:8px; }
   .log-row{ display:flex; gap:10px; font-size:13px; align-items:baseline; }
   .log-row .t{ color:#57616e; font-size:11px; flex:none; width:66px; }
   .log-row .tag{ flex:none; font-size:11px; padding:2px 7px; border-radius:5px; font-weight:700; }
-  .tag.gesture{ background:rgba(94,242,166,0.12); color:var(--sig); }
+  .tag.gesture{ background:rgba(94,242,166,0.12); color:#5EF2A6; }
   .tag.voice{ background:rgba(255,107,74,0.12); color:var(--warn); }
   .tag.text{ background:rgba(140,160,255,0.15); color:#b4c2ff; }
+  .tag.brain{ background:rgba(255,178,74,0.15); color:#FFB24A; }
   .tag.assist{ background:rgba(140,160,255,0.15); color:#b4c2ff; }
   .log-empty{ color:var(--ink-soft); font-size:13px; }
 </style>
@@ -206,7 +231,7 @@
 <body>
 
 <header>
-  <div class="brand"><span class="dot" id="liveDot"></span>signal · <span style="font-size: 14px; font-weight: 500; color: var(--ink-soft);">voice & text ai</span></div>
+  <div class="brand"><span class="dot" id="liveDot"></span>signal · <span id="headerBrainName" style="font-size: 14px; font-weight: 500; color: var(--brain-color);">universal core</span></div>
   <div class="header-actions">
     <div class="status mono" id="statusLine">idle · ready</div>
     <button class="key-btn" id="keyBtn">🔑 <span id="keyBtnLabel">Set Gemini Key</span></button>
@@ -217,8 +242,8 @@
   <!-- API Key Setup Banner -->
   <div class="api-banner" id="apiBanner">
     <div class="info">
-      <h4 id="bannerTitle">Connect Google Gemini Brain</h4>
-      <p id="bannerDesc">Enter your Google AI Studio API Key (starts with AIzaSy) to enable real-time intelligence.</p>
+      <h4 id="bannerTitle">Connect Google Gemini Multi-Brain</h4>
+      <p id="bannerDesc">Enter your Google AI Studio API Key to empower all specialized neural brains.</p>
     </div>
     <div class="api-input-wrap">
       <input type="password" id="apiKeyInput" placeholder="Paste Gemini Key (AIzaSy...)" autocomplete="off">
@@ -227,35 +252,23 @@
     </div>
   </div>
 
-  <div class="lead">
-    <span class="eyebrow">interactive multimodal assistant</span>
-    <h1>Speak, write, or gesture naturally.</h1>
-    <p>Signal accepts voice or typed input with Gemini intelligence, plus real-time hand gesture tracking via MediaPipe.</p>
+  <!-- MULTI-BRAIN NEURAL MATRIX -->
+  <div class="brain-matrix">
+    <div class="brain-matrix-header">
+      <h3>🧠 Select Neural Brain Specialist</h3>
+      <span class="mono" style="font-size:12px; color:var(--ink-soft);" id="autoDetectLabel">Or say: "Switch to Coder Brain"</span>
+    </div>
+    <div class="brain-grid" id="brainGrid"></div>
   </div>
 
-  <div class="features">
-    <div class="feature">
-      <div class="icon">💬</div>
-      <h3>Voice & Text Hybrid</h3>
-      <p>Ask questions by speaking aloud or typing into the chat box anytime.</p>
-    </div>
-    <div class="feature">
-      <div class="icon">✋</div>
-      <h3>Gesture & Core Control</h3>
-      <p>Rotate the 3D nebula with your hand or pinch to scale. Open palm silences the speech.</p>
-    </div>
-    <div class="feature">
-      <div class="icon">⚡</div>
-      <h3>Echo Cancellation</h3>
-      <p>Hard-mutes microphone listening while speaking so it never loops on itself.</p>
-    </div>
-  </div>
+  <!-- Quick Prompts bar -->
+  <div class="quick-prompts" id="quickPrompts"></div>
 
   <div class="grid">
     <div class="card core-card">
-      <h2>AI Core <span class="mono" id="coreState">idle</span></h2>
+      <h2>Neural Core <span class="mono" id="coreState">idle</span></h2>
       <div class="core-wrap" id="coreWrap">
-        <div class="core-hint">Move your hand to rotate, <b>pinch</b> to scale — glows purple when <b>thinking</b>, green when <b>speaking</b>.</div>
+        <div class="core-hint">Move hand to rotate, <b>pinch</b> to scale — 3D core adapts its color to the <b>active brain</b>.</div>
       </div>
     </div>
 
@@ -273,15 +286,15 @@
     </div>
 
     <div class="card">
-      <h2>Conversation (Voice & Text) <span class="mono" id="micState">off</span></h2>
+      <h2>Conversation (<span id="activeBrainBadge">General</span>) <span class="mono" id="micState">off</span></h2>
       <div class="mic-meter" id="micMeter"></div>
       <div class="transcript" id="transcript">
-        <div class="system-hint">Type a message below or turn on the microphone to speak.</div>
+        <div class="system-hint">Type or speak your question. Switch brains anytime above!</div>
       </div>
 
-      <!-- Writing / Text Input Box -->
+      <!-- Text Input -->
       <div class="chat-input-bar">
-        <input type="text" id="chatInput" placeholder="Type your message here (Press Enter to send)..." autocomplete="off">
+        <input type="text" id="chatInput" placeholder="Type a message or task (Press Enter)..." autocomplete="off">
         <button class="primary" id="sendBtn">Send</button>
       </div>
 
@@ -297,7 +310,7 @@
     <div class="card log-card">
       <h2>Activity Log</h2>
       <div class="log" id="log">
-        <div class="log-empty">Events will appear here as you speak, write, or gesture.</div>
+        <div class="log-empty">Events will appear here as you speak, write, or switch brains.</div>
       </div>
     </div>
   </div>
@@ -305,13 +318,127 @@
 
 <script>
 (function(){
+  /* ---------------- BRAIN MATRIX DEFINITION ---------------- */
+  const BRAINS = {
+    general: {
+      id: 'general',
+      name: 'Universal Core',
+      icon: '⚡',
+      color: '#5EF2A6',
+      glow: 'rgba(94,242,166,0.35)',
+      desc: 'All-around assistant for Q&A, reasoning, and quick daily tasks.',
+      prompt: 'You are Signal Core, a fast, intelligent, multi-purpose voice and chat assistant. Provide concise, direct, helpful answers (1 to 2 sentences max for voice, clear structure for text). Never use asterisks or markdown formatting if voice output is requested.',
+      prompts: ['What are 3 interesting science facts?', 'How does a quantum computer work?', 'Plan my daily routine for productivity']
+    },
+    coder: {
+      id: 'coder',
+      name: 'Cyber Architect',
+      icon: '💻',
+      color: '#5ECBF2',
+      glow: 'rgba(94,203,242,0.35)',
+      desc: 'Writes code, debugs, explains algorithms, and builds full scripts.',
+      prompt: 'You are Signal Architect, an expert software engineer and algorithm specialist. When writing code, provide clean, modern, well-commented snippets. Keep explanations concise, practical, and production-ready.',
+      prompts: ['Write a Python script to scrape a website', 'Explain WebSockets vs REST API', 'Create a JavaScript debounce function']
+    },
+    researcher: {
+      id: 'researcher',
+      name: 'Deep Scout',
+      icon: '🔍',
+      color: '#FFB24A',
+      glow: 'rgba(255,178,74,0.35)',
+      desc: 'In-depth research, critical analysis, structured facts & breakdowns.',
+      prompt: 'You are Signal Scout, a deep analytical researcher. Break down complex topics with sharp logical clarity, comparing pros/cons and citing key principles clearly and objectively.',
+      prompts: ['Analyze the pros and cons of Nuclear Fusion', 'Break down how Transformer models work', 'What caused the fall of the Roman Empire?']
+    },
+    creative: {
+      id: 'creative',
+      name: 'Muse & Visionary',
+      icon: '🎨',
+      color: '#FF6BD6',
+      glow: 'rgba(255,107,214,0.35)',
+      desc: 'Creative storytelling, design ideas, marketing hooks, and brainstorming.',
+      prompt: 'You are Signal Muse, an imaginative creative thinker, storyteller, and designer. Craft vivid concepts, compelling copy, metaphors, and original ideas with punchy flair.',
+      prompts: ['Write a sci-fi opening paragraph about Mars', 'Brainstorm 5 catchy names for an AI startup', 'Create a cyberpunk character backstory']
+    },
+    commander: {
+      id: 'commander',
+      name: 'Ops Commander',
+      icon: '🎯',
+      color: '#8C7BFF',
+      glow: 'rgba(140,123,255,0.35)',
+      desc: 'Action planner, system utilities, task execution, and calculations.',
+      prompt: 'You are Signal Commander, an executive decision maker and execution strategist. Give step-by-step action plans, checklist items, and direct answers with zero fluff.',
+      prompts: ['Give me a 5-step checklist to launch a product', 'Calculate monthly savings on $5000 income', 'Create a 30-day fitness roadmap']
+    }
+  };
+
+  let activeBrain = BRAINS.general;
+
+  function switchBrain(brainKey, announce = true){
+    if(!BRAINS[brainKey]) return;
+    activeBrain = BRAINS[brainKey];
+
+    document.documentElement.style.setProperty('--brain-color', activeBrain.color);
+    document.documentElement.style.setProperty('--brain-glow', activeBrain.glow);
+
+    document.getElementById('headerBrainName').textContent = activeBrain.name.toLowerCase();
+    document.getElementById('activeBrainBadge').textContent = activeBrain.name;
+
+    document.querySelectorAll('.brain-card').forEach(card => {
+      card.classList.toggle('active', card.dataset.brain === brainKey);
+    });
+
+    renderQuickPrompts();
+    logEvent('brain', 'brain', `Switched to ${activeBrain.name} brain`);
+
+    if(announce){
+      appendTranscript('assistant', `Switched to ${activeBrain.name} brain mode.`);
+      if(ttsToggle.checked && 'speechSynthesis' in window){
+        respond(`Switched to ${activeBrain.name} mode.`);
+      }
+    }
+  }
+
+  function renderBrainGrid(){
+    const grid = document.getElementById('brainGrid');
+    grid.innerHTML = '';
+    Object.values(BRAINS).forEach(b => {
+      const card = document.createElement('div');
+      card.className = `brain-card ${b.id === activeBrain.id ? 'active' : ''}`;
+      card.dataset.brain = b.id;
+      card.innerHTML = `
+        <span class="badge">ACTIVE</span>
+        <div class="title" style="color:${b.color};">${b.icon} ${b.name}</div>
+        <div class="desc">${b.desc}</div>
+      `;
+      card.addEventListener('click', () => switchBrain(b.id));
+      grid.appendChild(card);
+    });
+  }
+
+  function renderQuickPrompts(){
+    const wrap = document.getElementById('quickPrompts');
+    wrap.innerHTML = '';
+    activeBrain.prompts.forEach(p => {
+      const chip = document.createElement('div');
+      chip.className = 'quick-chip';
+      chip.textContent = p;
+      chip.addEventListener('click', () => {
+        chatInput.value = p;
+        handleTextSubmit();
+      });
+      wrap.appendChild(chip);
+    });
+  }
+
+  renderBrainGrid();
+  renderQuickPrompts();
+
+  /* ---------------- API KEY & SETTINGS ---------------- */
   const statusLine = document.getElementById('statusLine');
   const liveDot = document.getElementById('liveDot');
   const logEl = document.getElementById('log');
   const coreState = document.getElementById('coreState');
-  let cameraOn = false, micOn = false, isThinking = false, isSpeaking = false;
-
-  /* ---------------- API KEY & SETTINGS ---------------- */
   const apiKeyInput = document.getElementById('apiKeyInput');
   const saveKeyBtn = document.getElementById('saveKeyBtn');
   const clearKeyBtn = document.getElementById('clearKeyBtn');
@@ -322,13 +449,14 @@
   const keyBtnLabel = document.getElementById('keyBtnLabel');
   const ttsToggle = document.getElementById('ttsToggle');
 
+  let cameraOn = false, micOn = false, isThinking = false, isSpeaking = false;
   let GEMINI_KEY = localStorage.getItem('signal_gemini_key') || '';
 
   function updateKeyUI(){
     if(GEMINI_KEY){
       apiBanner.classList.add('connected');
-      bannerTitle.textContent = "Gemini Brain Connected ⚡";
-      bannerDesc.textContent = "Gemini Flash active. Ready for intelligent responses.";
+      bannerTitle.textContent = "Multi-Brain Connected ⚡";
+      bannerDesc.textContent = "All neural brains active and ready via Gemini Flash.";
       apiKeyInput.value = GEMINI_KEY;
       clearKeyBtn.style.display = 'inline-block';
       keyBtn.classList.add('has-key');
@@ -336,7 +464,7 @@
     } else {
       apiBanner.classList.remove('connected');
       bannerTitle.textContent = "Connect Google Gemini Brain";
-      bannerDesc.textContent = "Enter your Google AI Studio API Key (AIzaSy...) to enable real-time responses.";
+      bannerDesc.textContent = "Enter your Google AI Studio API Key (AIzaSy...) to enable AI responses.";
       apiKeyInput.value = '';
       clearKeyBtn.style.display = 'none';
       keyBtn.classList.remove('has-key');
@@ -352,7 +480,7 @@
       localStorage.setItem('signal_gemini_key', val);
       updateKeyUI();
       logEvent('assist', 'system', 'Gemini API key saved.');
-      respond("Gemini AI brain connected and ready.");
+      respond("All neural brains online and connected.");
     }
   });
 
@@ -373,7 +501,7 @@
     const parts = [];
     if(cameraOn) parts.push('camera on');
     if(isSpeaking) parts.push('speaking…');
-    else if(isThinking) parts.push('AI thinking…');
+    else if(isThinking) parts.push(`${activeBrain.name} thinking…`);
     else if(micOn) parts.push('listening');
     
     statusLine.textContent = parts.length ? parts.join(' · ') : 'idle · ready';
@@ -397,16 +525,32 @@
   /* ---------------- CONVERSATION & GEMINI AI ---------------- */
   const chatMessages = [];
 
-  async function callGeminiEndpoint(modelName, apiKey, promptHistory){
+  function checkForBrainSwitchCommand(text){
+    const lower = text.toLowerCase();
+    if(lower.includes('switch to coder') || lower.includes('coding brain') || lower.includes('developer brain')){
+      switchBrain('coder'); return true;
+    } else if(lower.includes('switch to research') || lower.includes('scout brain')){
+      switchBrain('researcher'); return true;
+    } else if(lower.includes('switch to creative') || lower.includes('muse brain')){
+      switchBrain('creative'); return true;
+    } else if(lower.includes('switch to commander') || lower.includes('ops brain')){
+      switchBrain('commander'); return true;
+    } else if(lower.includes('switch to general') || lower.includes('core brain') || lower.includes('default brain')){
+      switchBrain('general'); return true;
+    }
+    return false;
+  }
+
+  async function callGeminiEndpoint(modelName, apiKey, promptHistory, systemPrompt){
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     const payload = {
       contents: promptHistory,
       systemInstruction: {
-        parts: [{ text: "You are Signal, a helpful AI assistant. Provide short, concise, natural responses (1 to 2 sentences max). Never use asterisks, markdown, bullet points, or lists because your response may be read aloud directly to the user." }]
+        parts: [{ text: systemPrompt }]
       },
       generationConfig: {
-        maxOutputTokens: 150,
-        temperature: 0.7
+        maxOutputTokens: 250,
+        temperature: activeBrain.id === 'creative' ? 0.9 : 0.6
       }
     };
 
@@ -424,6 +568,8 @@
   }
 
   async function askGemini(userQuery, isFromVoice = false){
+    if(checkForBrainSwitchCommand(userQuery)) return;
+
     if(!GEMINI_KEY){
       respond("Please paste your Gemini API key in the top settings banner to enable AI answers.");
       return;
@@ -432,7 +578,7 @@
     pauseRecognition();
 
     isThinking = true;
-    coreState.textContent = 'thinking…';
+    coreState.textContent = `${activeBrain.name} thinking…`;
     setStatus();
     appendTranscript('user', userQuery);
 
@@ -441,10 +587,10 @@
     try {
       let data;
       try {
-        data = await callGeminiEndpoint('gemini-1.5-flash', GEMINI_KEY, chatMessages);
+        data = await callGeminiEndpoint('gemini-1.5-flash', GEMINI_KEY, chatMessages, activeBrain.prompt);
       } catch(e1) {
         console.warn('Gemini 1.5 Flash error, trying 2.0-flash:', e1);
-        data = await callGeminiEndpoint('gemini-2.0-flash', GEMINI_KEY, chatMessages);
+        data = await callGeminiEndpoint('gemini-2.0-flash', GEMINI_KEY, chatMessages, activeBrain.prompt);
       }
 
       const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I understood, but had no reply.";
@@ -465,7 +611,7 @@
       if(err.message.includes('API key not valid') || err.message.includes('API_KEY_INVALID')){
         errorMsg = "Your Gemini API key is invalid. Please check and re-paste it.";
       } else if(err.message.includes('Resource has been exhausted')){
-        errorMsg = "Your Gemini API quota is full. Please try again in a moment.";
+        errorMsg = "Gemini API quota is full. Please try again in a moment.";
       }
       respond(errorMsg);
     }
@@ -507,7 +653,22 @@
   function appendTranscript(sender, text){
     const msg = document.createElement('div');
     msg.className = `msg ${sender}`;
-    msg.innerHTML = `<b>${sender === 'user' ? 'You:' : 'Signal:'}</b> ${text}`;
+    
+    if(text.includes('```')){
+      const parts = text.split('```');
+      let html = `<b>${sender === 'user' ? 'You:' : activeBrain.name + ':'}</b> `;
+      parts.forEach((p, idx) => {
+        if(idx % 2 === 1){
+          html += `<pre><code>${p.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
+        } else {
+          html += p;
+        }
+      });
+      msg.innerHTML = html;
+    } else {
+      msg.innerHTML = `<b>${sender === 'user' ? 'You:' : activeBrain.name + ':'}</b> ${text}`;
+    }
+    
     transcriptEl.appendChild(msg);
     transcriptEl.scrollTop = transcriptEl.scrollHeight;
   }
@@ -535,9 +696,11 @@
   }
 
   function respond(text){
-    const cleanText = text.replace(/[*_#`~\[\]\(\)]/g, '').trim();
-    appendTranscript('assistant', cleanText);
-    logEvent('assist', 'assistant', cleanText);
+    const cleanSpeech = text.replace(/```[\s\S]*?```/g, 'Code snippet provided in chat.')
+                            .replace(/[*_#`~\[\]\(\)]/g, '').trim();
+
+    appendTranscript('assistant', text);
+    logEvent('assist', 'assistant', cleanSpeech.slice(0, 50) + (cleanSpeech.length > 50 ? '…' : ''));
     
     if(!ttsToggle.checked || !('speechSynthesis' in window)){
       coreState.textContent = 'idle';
@@ -552,9 +715,9 @@
     setStatus();
     speechSynthesis.cancel();
 
-    const utter = new SpeechSynthesisUtterance(cleanText);
+    const utter = new SpeechSynthesisUtterance(cleanSpeech);
     utter.rate = 1.05;
-    utter.pitch = 1.0;
+    utter.pitch = activeBrain.id === 'creative' ? 1.1 : (activeBrain.id === 'coder' ? 0.95 : 1.0);
 
     utter.onend = () => {
       isSpeaking = false;
@@ -672,7 +835,7 @@
     micState.textContent = 'on';
     micBtn.textContent = 'Turn off mic';
     micBtn.classList.remove('primary');
-    transcriptEl.innerHTML = "<div class='system-hint'>Listening — speak or type your question...</div>";
+    transcriptEl.innerHTML = "<div class='system-hint'>Listening — speak or switch brains above...</div>";
     setStatus();
   }
 
@@ -733,7 +896,7 @@
 
       const gestures = [];
       handsArr.forEach(lm => {
-        ctx.strokeStyle = 'rgba(94,242,166,0.8)';
+        ctx.strokeStyle = activeBrain.color;
         ctx.lineWidth = 2;
         CONNECTIONS.forEach(([a,b]) => {
           ctx.beginPath();
@@ -741,7 +904,7 @@
           ctx.lineTo(lm[b].x*canvas.width, lm[b].y*canvas.height);
           ctx.stroke();
         });
-        ctx.fillStyle = '#5EF2A6';
+        ctx.fillStyle = activeBrain.color;
         lm.forEach(p => {
           ctx.beginPath();
           ctx.arc(p.x*canvas.width, p.y*canvas.height, 3.5, 0, Math.PI*2);
@@ -765,6 +928,10 @@
           stopVoiceBtn.style.display = 'none';
           logEvent('assist', 'action', 'Speech silenced by open palm');
           resumeRecognition();
+        } else if(gestures.includes('Peace sign') && now - lastGestureAt > 3000){
+          const keys = Object.keys(BRAINS);
+          const nextIndex = (keys.indexOf(activeBrain.id) + 1) % keys.length;
+          switchBrain(keys[nextIndex]);
         }
         
         lastGesture = gestureKey; 
@@ -894,14 +1061,8 @@
     const group = new THREE.Group();
     scene.add(group);
 
-    const palette = [
-      new THREE.Color(0x5EF2A6), new THREE.Color(0x8C7BFF),
-      new THREE.Color(0x5ECBF2), new THREE.Color(0xFF6BD6)
-    ];
-
     function makeNebula(count, minR, maxR, size, opacity){
       const pos = new Float32Array(count * 3);
-      const col = new Float32Array(count * 3);
       for(let i=0;i<count;i++){
         const r = minR + Math.pow(Math.random(), 0.6) * (maxR-minR);
         const theta = Math.random()*Math.PI*2;
@@ -909,14 +1070,11 @@
         pos[i*3]   = r*Math.sin(phi)*Math.cos(theta);
         pos[i*3+1] = r*Math.sin(phi)*Math.sin(theta);
         pos[i*3+2] = r*Math.cos(phi);
-        const c = palette[Math.floor(Math.random()*palette.length)];
-        col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
       }
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
       const mat = new THREE.PointsMaterial({
-        size, vertexColors:true, map:glowTex, transparent:true, opacity,
+        size, color: new THREE.Color(activeBrain.color), map:glowTex, transparent:true, opacity,
         blending: THREE.AdditiveBlending, depthWrite:false
       });
       return new THREE.Points(geo, mat);
@@ -926,22 +1084,22 @@
     group.add(nebulaCore, nebulaHalo);
 
     const bloomSprite = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: glowTex, color:0x5EF2A6, transparent:true, opacity:0.6,
+      map: glowTex, color: new THREE.Color(activeBrain.color), transparent:true, opacity:0.65,
       blending: THREE.AdditiveBlending
     }));
     bloomSprite.scale.set(1.8, 1.8, 1);
     group.add(bloomSprite);
 
-    function makeRing(radius, tilt, color){
+    function makeRing(radius, tilt){
       const ringGeo = new THREE.TorusGeometry(radius, 0.006, 8, 140);
-      const ringMat = new THREE.MeshBasicMaterial({ color, transparent:true, opacity:0.35, blending:THREE.AdditiveBlending });
+      const ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(activeBrain.color), transparent:true, opacity:0.35, blending:THREE.AdditiveBlending });
       const ring = new THREE.Mesh(ringGeo, ringMat);
       ring.rotation.x = tilt;
       group.add(ring);
       return ring;
     }
-    const ringA = makeRing(1.7, Math.PI/2.1, 0x5EF2A6);
-    const ringB = makeRing(2.1, Math.PI/2.6, 0x8C7BFF);
+    const ringA = makeRing(1.7, Math.PI/2.1);
+    const ringB = makeRing(2.1, Math.PI/2.6);
 
     function onResize(){
       const nw = wrap.clientWidth, nh = wrap.clientHeight;
@@ -959,6 +1117,13 @@
       const lm = window.__signalHandLandmarks;
       const micLevel = window.__signalMicLevel || 0;
 
+      const targetColor = new THREE.Color(isThinking ? '#8C7BFF' : activeBrain.color);
+      nebulaCore.material.color.lerp(targetColor, 0.08);
+      nebulaHalo.material.color.lerp(targetColor, 0.08);
+      bloomSprite.material.color.lerp(targetColor, 0.08);
+      ringA.material.color.lerp(targetColor, 0.08);
+      ringB.material.color.lerp(targetColor, 0.08);
+
       if(lm){
         targetRotY = (lm[0].x - 0.5) * 3.2;
         targetRotX = (lm[0].y - 0.5) * -2.2;
@@ -969,12 +1134,6 @@
         targetRotY = Math.sin(autoAngle) * 0.5;
         targetRotX = Math.cos(autoAngle*0.8) * 0.2;
         targetScale = isThinking ? 1.2 : 1;
-      }
-
-      if(isThinking){
-        bloomSprite.material.color.setHex(0x8C7BFF);
-      } else {
-        bloomSprite.material.color.setHex(0x5EF2A6);
       }
 
       const micPulse = 1 + Math.min(micLevel * 1.5, 0.4);
